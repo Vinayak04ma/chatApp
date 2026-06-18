@@ -63,7 +63,7 @@ export const startSendOtpConsumer = async () => {
               "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
             },
             body: JSON.stringify({
-              from: "Chatify <onboarding@resend.dev>",
+              from: "onboarding@resend.dev",
               to,
               subject,
               html: `<div><h3>Your OTP</h3><p>${body}</p></div>`,
