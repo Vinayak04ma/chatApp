@@ -13,6 +13,7 @@ import toast, { Toaster } from "react-hot-toast";
 
 export const user_service = process.env.NEXT_PUBLIC_USER_SERVICE_URL || "http://16.171.41.165:5000";
 export const chat_service = process.env.NEXT_PUBLIC_CHAT_SERVICE_URL || "http://16.171.41.165:5002";
+export const mail_service = process.env.NEXT_PUBLIC_MAIL_SERVICE_URL || "";
 
 
 export interface User {
@@ -130,6 +131,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   }
 
   useEffect(() => {
+    // Wake up microservices in background on page load
+    fetch(`${user_service}/ping`).catch(() => {});
+    fetch(`${chat_service}/ping`).catch(() => {});
+    if (mail_service) {
+      fetch(`${mail_service}/ping`).catch(() => {});
+    }
     fetchUser();
     fetchChats();
     fetchUsers();
