@@ -21,9 +21,11 @@ export const startSendOtpConsumer = async () => {
     console.log("✅ Mail Service consumer started, listening for otp emails");
 
     const useResend = !!process.env.RESEND_API_KEY;
+    const useBrevo = !!process.env.BREVO_API_KEY;
+    const useExternalApi = useResend || useBrevo;
     let transporter: any;
 
-    if (!useResend) {
+    if (!useExternalApi) {
       transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST || "smtp.gmail.com",
         port: Number(process.env.SMTP_PORT) || 587,
@@ -47,7 +49,7 @@ export const startSendOtpConsumer = async () => {
         return;
       }
     } else {
-      console.log("✅ Mail Service using Resend HTTP API for sending emails");
+      console.log(`✅ Mail Service using ${useBrevo ? "Brevo" : "Resend"} HTTP API for sending emails`);
     }
 
     channel.consume(queueName, async (msg) => {
@@ -55,7 +57,30 @@ export const startSendOtpConsumer = async () => {
       try {
         const { to, subject, body } = JSON.parse(msg.content.toString());
 
-        if (useResend) {
+        if (useBrevo) {
+          const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+            method: "POST",
+            headers: {
+              "accept": "application/json",
+              "api-key": process.env.BREVO_API_KEY || "",
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({
+              sender: { name: "Chatify", email: process.env.SMTP_USER || "vinayakmaheshwari57@gmail.com" },
+              to: [{ email: to }],
+              subject,
+              htmlContent: `<div><h3>Your OTP</h3><p>${body}</p></div>`,
+            }),
+          });
+
+          if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(JSON.stringify(errData));
+          }
+
+          const resData = (await res.json()) as any;
+          console.log(`✅ OTP mail sent via Brevo to ${to}. MessageId: ${resData.messageId}`);
+        } else if (useResend) {
           const res = await fetch("https://api.resend.com/emails", {
             method: "POST",
             headers: {
