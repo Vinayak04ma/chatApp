@@ -8,6 +8,7 @@ interface ChatHeaderProps {
   setSidebarOpen: (open: boolean) => void;
   isTyping: boolean;
   onlineUsers: string[];
+  onHeaderClick?: () => void;
 }
 
 const ChatHeader = ({
@@ -15,6 +16,7 @@ const ChatHeader = ({
   setSidebarOpen,
   isTyping,
   onlineUsers,
+  onHeaderClick,
 }: ChatHeaderProps) => {
   const isOnlineUser = user && onlineUsers.includes(user._id);
   const { callUser } = CallData();
@@ -36,7 +38,10 @@ const ChatHeader = ({
         <div className="flex items-center justify-between gap-4">
           {user ? (
             <>
-              <div className="flex items-center gap-4 flex-1 min-w-0">
+              <div 
+                onClick={onHeaderClick}
+                className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer hover:bg-gray-700/40 p-2 -m-2 rounded-lg transition-all"
+              >
                 <div className="relative flex-shrink-0">
                   <div
                     className="w-14 h-14 rounded-full bg-gray-700 flex items-center justify-center"

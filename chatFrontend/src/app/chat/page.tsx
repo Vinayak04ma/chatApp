@@ -1,11 +1,13 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import ChatSidebar from "@/components/ChatSidebar";
 import Loading from "@/components/Loading";
 import ChatHeader from "@/components/ChatHeader";
 import ChatMessages from "@/components/ChatMessages";
 import MessageInput from "@/components/MessageInput";
 import { useChatState } from "@/hooks/useChatState";
+import { X, UserCircle, Phone, Video } from "lucide-react";
+import { CallData } from "@/context/CallContext";
 
 export type { Message } from "@/hooks/useChatState";
 
@@ -32,6 +34,9 @@ const ChatApp = () => {
     handleMessageSend,
   } = useChatState();
 
+  const [profilePanelOpen, setProfilePanelOpen] = useState(false);
+  const { callUser } = CallData();
+
   if (loading) return <Loading />;
   return (
     <div className="min-h-screen flex bg-gray-900 text-white relative overflow-hidden">
@@ -55,6 +60,7 @@ const ChatApp = () => {
           setSidebarOpen={setSiderbarOpen}
           isTyping={isTyping}
           onlineUsers={onlineUsers}
+          onHeaderClick={() => setProfilePanelOpen(!profilePanelOpen)}
         />
 
         <ChatMessages
@@ -70,6 +76,66 @@ const ChatApp = () => {
           handleMessageSend={handleMessageSend}
         />
       </div>
+
+      {/* WhatsApp-style Profile Info Sidebar */}
+      {profilePanelOpen && user && (
+        <div className="w-80 bg-gray-800 border-l border-gray-700 p-6 flex flex-col gap-6 relative animate-in slide-in-from-right duration-300 z-40">
+          <button 
+            onClick={() => setProfilePanelOpen(false)}
+            className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-700/50 transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          
+          <div className="flex flex-col items-center gap-4 text-center mt-8">
+            <div className="w-24 h-24 rounded-full bg-gray-700 flex items-center justify-center border-2 border-gray-600 shadow-lg">
+              <UserCircle className="w-16 h-16 text-gray-300" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-white truncate max-w-[240px]">{user.name}</h3>
+              <p className="text-sm text-gray-400 truncate max-w-[240px]">{user.email}</p>
+            </div>
+          </div>
+          
+          <div className="border-t border-gray-700 pt-6">
+            <h4 className="text-sm font-semibold text-gray-400 mb-4">Call Options</h4>
+            <div className="flex justify-around">
+              <button 
+                onClick={() => callUser(user._id, "voice")}
+                className="flex flex-col items-center gap-2 text-gray-300 hover:text-white group"
+              >
+                <div className="p-3 bg-gray-700 hover:bg-gray-600 rounded-full transition-transform group-hover:scale-110">
+                  <Phone className="w-5 h-5" />
+                </div>
+                <span className="text-xs">Voice</span>
+              </button>
+              <button 
+                onClick={() => callUser(user._id, "video")}
+                className="flex flex-col items-center gap-2 text-gray-300 hover:text-white group"
+              >
+                <div className="p-3 bg-gray-700 hover:bg-gray-600 rounded-full transition-transform group-hover:scale-110">
+                  <Video className="w-5 h-5" />
+                </div>
+                <span className="text-xs">Video</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-700 pt-6">
+            <h4 className="text-sm font-semibold text-gray-400 mb-2">About</h4>
+            <div className="text-sm text-gray-300 bg-gray-900/40 p-3 rounded-lg border border-gray-700/50">
+              <p className="italic">"Hey there! I am using Chatify."</p>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-700 pt-6">
+            <h4 className="text-sm font-semibold text-gray-400 mb-2">Media, Links & Docs</h4>
+            <div className="bg-gray-900/40 rounded-lg p-4 text-center text-sm text-gray-500 border border-gray-700/50">
+              No media shared yet
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
