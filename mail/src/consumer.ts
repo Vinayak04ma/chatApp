@@ -20,8 +20,15 @@ export const startSendOtpConsumer = async () => {
     await channel.assertQueue(queueName, { durable: true });
     console.log("✅ Mail Service consumer started, listening for otp emails");
 
-    const useResend = !!process.env.RESEND_API_KEY;
-    const useBrevo = !!process.env.BREVO_API_KEY;
+    const getCleanEnvVar = (name: string): string => {
+      const val = process.env[name] || "";
+      return val.replace(/^["']|["']$/g, "").trim();
+    };
+
+    const resendApiKey = getCleanEnvVar("RESEND_API_KEY");
+    const brevoApiKey = getCleanEnvVar("BREVO_API_KEY");
+    const useResend = !!resendApiKey;
+    const useBrevo = !!brevoApiKey;
     const useExternalApi = useResend || useBrevo;
     let transporter: any;
 
@@ -62,7 +69,7 @@ export const startSendOtpConsumer = async () => {
             method: "POST",
             headers: {
               "accept": "application/json",
-              "api-key": process.env.BREVO_API_KEY || "",
+              "api-key": brevoApiKey,
               "content-type": "application/json",
             },
             body: JSON.stringify({
@@ -85,7 +92,7 @@ export const startSendOtpConsumer = async () => {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
+              "Authorization": `Bearer ${resendApiKey}`,
             },
             body: JSON.stringify({
               from: "onboarding@resend.dev",
