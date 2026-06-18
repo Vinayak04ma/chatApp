@@ -81,10 +81,8 @@ Api_Secret="your_cloudinary_api_secret"
 ```env
 PORT=5002
 RABBITMQ_URL="amqp://localhost"
-SMTP_HOST="smtp.gmail.com"
-SMTP_PORT=587
-SMTP_MAIL="your-email@gmail.com"
-SMTP_PASSWORD="your-app-password"
+SMTP_USER="your-email@gmail.com"
+SMTP_PASS="your-app-password"
 ```
 
 ### Client Frontend (`chatFrontend/.env`)
