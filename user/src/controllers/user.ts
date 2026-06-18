@@ -96,7 +96,8 @@ export const updateName = TryCatch(async (req: AuthenticatedRequest, res) => {
     return;
   }
 
-  user.name = req.body.name;
+  if (req.body.name) user.name = req.body.name;
+  if (req.body.about !== undefined) user.about = req.body.about;
 
   await user.save();
 

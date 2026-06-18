@@ -37,6 +37,13 @@ const ChatApp = () => {
   const [profilePanelOpen, setProfilePanelOpen] = useState(false);
   const { callUser } = CallData();
 
+  const sharedMedia = React.useMemo(() => {
+    if (!messages) return [];
+    return messages.filter(
+      (msg) => msg.messageType === "image" && msg.image?.url
+    );
+  }, [messages]);
+
   if (loading) return <Loading />;
   return (
     <div className="min-h-screen flex bg-gray-900 text-white relative overflow-hidden">
@@ -79,7 +86,7 @@ const ChatApp = () => {
 
       {/* WhatsApp-style Profile Info Sidebar */}
       {profilePanelOpen && user && (
-        <div className="w-80 bg-gray-800 border-l border-gray-700 p-6 flex flex-col gap-6 relative animate-in slide-in-from-right duration-300 z-40">
+        <div className="w-80 h-screen overflow-y-auto bg-gray-800 border-l border-gray-700 p-6 flex flex-col gap-6 relative animate-in slide-in-from-right duration-300 z-40 custom-scroll pb-10">
           <button 
             onClick={() => setProfilePanelOpen(false)}
             className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-700/50 transition-colors"
@@ -124,15 +131,35 @@ const ChatApp = () => {
           <div className="border-t border-gray-700 pt-6">
             <h4 className="text-sm font-semibold text-gray-400 mb-2">About</h4>
             <div className="text-sm text-gray-300 bg-gray-900/40 p-3 rounded-lg border border-gray-700/50">
-              <p className="italic">"Hey there! I am using Chatify."</p>
+              <p className="italic">"{user.about || "Hey there! I am using Chatify."}"</p>
             </div>
           </div>
 
           <div className="border-t border-gray-700 pt-6">
             <h4 className="text-sm font-semibold text-gray-400 mb-2">Media, Links & Docs</h4>
-            <div className="bg-gray-900/40 rounded-lg p-4 text-center text-sm text-gray-500 border border-gray-700/50">
-              No media shared yet
-            </div>
+            {sharedMedia.length > 0 ? (
+              <div className="grid grid-cols-3 gap-2">
+                {sharedMedia.map((msg, index) => (
+                  <a 
+                    key={index}
+                    href={msg.image?.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="relative aspect-square rounded-lg overflow-hidden bg-gray-900 border border-gray-700 hover:opacity-80 transition-opacity"
+                  >
+                    <img 
+                      src={msg.image?.url} 
+                      alt="shared media" 
+                      className="object-cover w-full h-full"
+                    />
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-gray-900/40 rounded-lg p-4 text-center text-sm text-gray-500 border border-gray-700/50">
+                No media shared yet
+              </div>
+            )}
           </div>
         </div>
       )}

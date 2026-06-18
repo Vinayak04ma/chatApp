@@ -6,13 +6,15 @@ import Cookies from "js-cookie";
 import axios from "axios";
 import toast from "react-hot-toast";
 import Loading from "@/components/Loading";
-import { ArrowLeft, Save, User, UserCircle } from "lucide-react";
+import { ArrowLeft, Save, User, UserCircle, Info } from "lucide-react";
 
 const ProfilePage = () => {
   const { user, isAuth, loading, setUser } = useAppData();
 
   const [isEdit, setIsEdit] = useState(false);
   const [name, setName] = useState<string | undefined>("");
+  const [isEditAbout, setIsEditAbout] = useState(false);
+  const [about, setAbout] = useState<string | undefined>("");
 
   const router = useRouter();
 
@@ -21,13 +23,19 @@ const ProfilePage = () => {
     setName(user?.name);
   };
 
-  const submitHandler = async (e: any) => {
+  const editAboutHandler = () => {
+    setIsEditAbout(!isEditAbout);
+    setAbout(user?.about || "Hey there! I am using Chatify.");
+  };
+
+  const submitHandler = async (e: any, field: "name" | "about") => {
     e.preventDefault();
     const token = Cookies.get("token");
     try {
+      const payload = field === "name" ? { name } : { about };
       const { data } = await axios.post(
         `${user_service}/api/v1/update/user`,
-        { name },
+        payload,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -43,9 +51,10 @@ const ProfilePage = () => {
 
       toast.success(data.message);
       setUser(data.user);
-      setIsEdit(false);
+      if (field === "name") setIsEdit(false);
+      if (field === "about") setIsEditAbout(false);
     } catch (error: any) {
-      toast.error(error.response.data.message);
+      toast.error(error.response?.data?.message || "An error occurred");
     }
   };
 
@@ -100,7 +109,7 @@ const ProfilePage = () => {
                 </label>
 
                 {isEdit ? (
-                  <form onSubmit={submitHandler} className="space-y-4">
+                  <form onSubmit={(e) => submitHandler(e, "name")} className="space-y-4">
                     <div className="relative">
                       <input
                         type="text"
@@ -134,6 +143,55 @@ const ProfilePage = () => {
                     </span>
                     <button
                       onClick={editHandler}
+                      className="flex items-center gap-2 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-3">
+                  About (Status)
+                </label>
+
+                {isEditAbout ? (
+                  <form onSubmit={(e) => submitHandler(e, "about")} className="space-y-4">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={about}
+                        onChange={(e) => setAbout(e.target.value)}
+                        className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400"
+                        placeholder="Write something about yourself..."
+                      />
+                      <Info className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        type="submit"
+                        className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg"
+                      >
+                        <Save className="w-4 h-4" /> Save Changes
+                      </button>
+                      <button
+                        type="button"
+                        onClick={editAboutHandler}
+                        className="flex items-center gap-2 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="flex items-center justify-between p-4 bg-gray-700 rounded-lg border border-gray-600">
+                    <span className="text-white font-medium text-lg">
+                      {user?.about || "Hey there! I am using Chatify."}
+                    </span>
+                    <button
+                      onClick={editAboutHandler}
                       className="flex items-center gap-2 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg"
                     >
                       Edit
