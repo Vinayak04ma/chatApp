@@ -20,27 +20,34 @@ export const startSendOtpConsumer = async () => {
     await channel.assertQueue(queueName, { durable: true });
     console.log("✅ Mail Service consumer started, listening for otp emails");
 
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || "smtp.gmail.com",
-      port: Number(process.env.SMTP_PORT) || 587,
-      secure: process.env.SMTP_SECURE === "true", // true for 465, false for 587 (STARTTLS)
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-      pool: true,
-      maxConnections: 1,
-      maxMessages: 3,
-      debug: false,
-    });
+    const useResend = !!process.env.RESEND_API_KEY;
+    let transporter: any;
 
-    try {
-      await transporter.verify();
-      console.log("✅ SMTP connection verified successfully");
-    } catch (verifyError:any) {
-      console.error("❌ SMTP verification failed:", verifyError && verifyError.message ? verifyError.message : verifyError);
-      console.error("🔧 Please check your Gmail credentials and ensure you're using an App Password (and that it's for the same account).");
-      return;
+    if (!useResend) {
+      transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || "smtp.gmail.com",
+        port: Number(process.env.SMTP_PORT) || 587,
+        secure: process.env.SMTP_SECURE === "true", // true for 465, false for 587 (STARTTLS)
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+        pool: true,
+        maxConnections: 1,
+        maxMessages: 3,
+        debug: false,
+      });
+
+      try {
+        await transporter.verify();
+        console.log("✅ SMTP connection verified successfully");
+      } catch (verifyError:any) {
+        console.error("❌ SMTP verification failed:", verifyError && verifyError.message ? verifyError.message : verifyError);
+        console.error("🔧 Please check your Gmail credentials and ensure you're using an App Password (and that it's for the same account).");
+        return;
+      }
+    } else {
+      console.log("✅ Mail Service using Resend HTTP API for sending emails");
     }
 
     channel.consume(queueName, async (msg) => {
@@ -48,20 +55,43 @@ export const startSendOtpConsumer = async () => {
       try {
         const { to, subject, body } = JSON.parse(msg.content.toString());
 
-        const mailOptions = {
-          from: process.env.SMTP_USER,
-          to,
-          subject,
-          text: body,
-          html: `<div><h3>Your OTP</h3><p>${body}</p></div>`,
-        };
+        if (useResend) {
+          const res = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
+            },
+            body: JSON.stringify({
+              from: "Chatify <onboarding@resend.dev>",
+              to,
+              subject,
+              html: `<div><h3>Your OTP</h3><p>${body}</p></div>`,
+            }),
+          });
 
-        const result = await transporter.sendMail(mailOptions);
-        console.log(`✅ OTP mail sent to ${to}. MessageId: ${result.messageId}`);
+          if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(JSON.stringify(errData));
+          }
+
+          const resData = (await res.json()) as any;
+          console.log(`✅ OTP mail sent via Resend to ${to}. ID: ${resData.id}`);
+        } else {
+          const mailOptions = {
+            from: process.env.SMTP_USER,
+            to,
+            subject,
+            text: body,
+            html: `<div><h3>Your OTP</h3><p>${body}</p></div>`,
+          };
+
+          const result = await transporter.sendMail(mailOptions);
+          console.log(`✅ OTP mail sent to ${to}. MessageId: ${result.messageId}`);
+        }
         channel.ack(msg);
       } catch (err:any) {
         console.error("❌ Failed to send OTP:", err && err.message ? err.message : err);
-        // Do not ack so message can be retried or move to DLQ depending on topology
       }
     }, { noAck: false });
 
@@ -69,7 +99,7 @@ export const startSendOtpConsumer = async () => {
     process.on('SIGINT', async () => {
       await channel.close();
       await connection.close();
-      transporter.close();
+      if (transporter) transporter.close();
       process.exit(0);
     });
 
