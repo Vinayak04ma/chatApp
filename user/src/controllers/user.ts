@@ -99,6 +99,13 @@ export const updateName = TryCatch(async (req: AuthenticatedRequest, res) => {
   if (req.body.name) user.name = req.body.name;
   if (req.body.about !== undefined) user.about = req.body.about;
 
+  if (req.file) {
+    user.profilePic = {
+      url: req.file.path,
+      publicId: req.file.filename,
+    };
+  }
+
   await user.save();
 
   const token = generateToken(user);

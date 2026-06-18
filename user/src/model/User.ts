@@ -4,6 +4,10 @@ export interface IUser extends Document {
   name: string;
   email: string;
   about: string;
+  profilePic?: {
+    url: string;
+    publicId: string;
+  };
 }
 
 const schema: Schema<IUser> = new Schema(
@@ -20,6 +24,10 @@ const schema: Schema<IUser> = new Schema(
     about: {
       type: String,
       default: "Hey there! I am using Chatify.",
+    },
+    profilePic: {
+      url: String,
+      publicId: String,
     },
   },
   {

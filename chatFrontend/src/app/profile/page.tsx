@@ -6,7 +6,7 @@ import Cookies from "js-cookie";
 import axios from "axios";
 import toast from "react-hot-toast";
 import Loading from "@/components/Loading";
-import { ArrowLeft, Save, User, UserCircle, Info } from "lucide-react";
+import { ArrowLeft, Save, User, UserCircle, Info, Camera } from "lucide-react";
 
 const ProfilePage = () => {
   const { user, isAuth, loading, setUser } = useAppData();
@@ -58,6 +58,40 @@ const ProfilePage = () => {
     }
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const token = Cookies.get("token");
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const toastId = toast.loading("Uploading profile photo...");
+    try {
+      const { data } = await axios.post(
+        `${user_service}/api/v1/update/user`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      Cookies.set("token", data.token, {
+        expires: 15,
+        secure: false,
+        path: "/",
+      });
+
+      toast.success("Profile photo updated!", { id: toastId });
+      setUser(data.user);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to upload image", { id: toastId });
+    }
+  };
+
   useEffect(() => {
     if (!isAuth && !loading) {
       router.push("/login");
@@ -86,10 +120,30 @@ const ProfilePage = () => {
         <div className="bg-gray-800 rounded-lg border border-gray-700 shadow-lg">
           <div className="bg-gray-700 p-8 border-b border-gray-600">
             <div className="flex items-center gap-6">
-              <div className="relative">
-                <div className="w-20 h-20 rounded-full bg-gray-600 flex items-center justify-center">
-                  <UserCircle className="w-12 h-12 text-gray-300" />
-                </div>
+              <div className="relative group">
+                <input
+                  type="file"
+                  id="profile-pic-input"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+                <label htmlFor="profile-pic-input" className="cursor-pointer block relative">
+                  <div className="w-20 h-20 rounded-full bg-gray-600 flex items-center justify-center overflow-hidden border-2 border-gray-500 hover:border-blue-500 transition-colors">
+                    {user?.profilePic?.url ? (
+                      <img
+                        src={user.profilePic.url}
+                        alt="Profile"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <UserCircle className="w-12 h-12 text-gray-300" />
+                    )}
+                  </div>
+                  <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Camera className="w-6 h-6 text-white" />
+                  </div>
+                </label>
                 <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-gray-800"></div>
               </div>
               <div className="flex-1">

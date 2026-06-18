@@ -21,6 +21,10 @@ export interface User {
   name: string;
   email: string;
   about?: string;
+  profilePic?: {
+    url: string;
+    publicId: string;
+  };
 }
 
 export interface Chat {

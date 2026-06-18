@@ -95,8 +95,16 @@ const ChatApp = () => {
           </button>
           
           <div className="flex flex-col items-center gap-4 text-center mt-8">
-            <div className="w-24 h-24 rounded-full bg-gray-700 flex items-center justify-center border-2 border-gray-600 shadow-lg">
-              <UserCircle className="w-16 h-16 text-gray-300" />
+            <div className="w-24 h-24 rounded-full bg-gray-700 flex items-center justify-center border-2 border-gray-600 shadow-lg overflow-hidden">
+              {user.profilePic?.url ? (
+                <img
+                  src={user.profilePic.url}
+                  alt={user.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <UserCircle className="w-16 h-16 text-gray-300" />
+              )}
             </div>
             <div>
               <h3 className="text-xl font-bold text-white truncate max-w-[240px]">{user.name}</h3>

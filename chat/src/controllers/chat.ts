@@ -5,6 +5,25 @@ import { Chat } from "../models/Chat.js";
 import { Messages } from "../models/Messages.js";
 import { getRecieverSocketId, io } from "../config/socket.js";
 
+// In-memory cache for user profiles to prevent excessive inter-service HTTP requests
+const userCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes TTL
+
+async function fetchUserWithCache(userId: string) {
+  const now = Date.now();
+  const cached = userCache.get(userId);
+  if (cached && (now - cached.timestamp < CACHE_TTL)) {
+    return cached.data;
+  }
+  
+  const { data } = await axios.get(
+    `${process.env.USER_SERVICE}/api/v1/user/${userId}`
+  );
+  
+  userCache.set(userId, { data, timestamp: now });
+  return data;
+}
+
 export const createNewChat = TryCatch(
   async (req: AuthenticatedRequest, res) => {
     const userId = req.user?._id;
@@ -62,12 +81,10 @@ export const getAllChats = TryCatch(async (req: AuthenticatedRequest, res) => {
       });
 
       try {
-        const { data } = await axios.get(
-          `${process.env.USER_SERVICE}/api/v1/user/${otherUserId}`
-        );
+        const userData = await fetchUserWithCache(otherUserId!);
 
         return {
-          user: data,
+          user: userData,
           chat: {
             ...chat.toObject(),
             latestMessage: chat.latestMessage || null,
@@ -290,20 +307,17 @@ export const getMessagesByChat = TryCatch(
     );
 
     const messages = await Messages.find({ chatId }).sort({ createdAt: 1 });
-
     const otherUserId = chat.users.find((id) => id !== userId);
 
-    try {
-      const { data } = await axios.get(
-        `${process.env.USER_SERVICE}/api/v1/user/${otherUserId}`
-      );
+    if (!otherUserId) {
+      res.status(400).json({
+        message: "No other user",
+      });
+      return;
+    }
 
-      if (!otherUserId) {
-        res.status(400).json({
-          message: "No other user",
-        });
-        return;
-      }
+    try {
+      const userData = await fetchUserWithCache(otherUserId.toString());
 
       //socket work
       if (messagesToMarkSeen.length > 0) {
@@ -319,7 +333,7 @@ export const getMessagesByChat = TryCatch(
 
       res.json({
         messages,
-        user: data,
+        user: userData,
       });
     } catch (error) {
       console.log(error);

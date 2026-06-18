@@ -121,9 +121,19 @@ const ChatSidebar = ({
                   >
                     <div className="flex items-center gap-3">
                       <div className="relative">
-                        <UserCircle className="w-6 h-6 text-gray-300" />
+                        <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border border-gray-600">
+                          {u.profilePic?.url ? (
+                            <img
+                              src={u.profilePic.url}
+                              alt={u.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <UserCircle className="w-5 h-5 text-gray-300" />
+                          )}
+                        </div>
                         {onlineUsers.includes(u._id) && (
-                          <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-gray-900" />
+                          <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-gray-900 z-10" />
                         )}
                       </div>
 
@@ -162,12 +172,19 @@ const ChatSidebar = ({
                 >
                   <div className="flex items-center gap-3">
                     <div className="relative">
-                      <div className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center">
-                        <UserCircle className="w-7 h-7 text-gray-300" />
-                        {/* onlineuser ka work hai */}
+                      <div className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border border-gray-600">
+                        {chat.user.profilePic?.url ? (
+                          <img
+                            src={chat.user.profilePic.url}
+                            alt={chat.user.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <UserCircle className="w-7 h-7 text-gray-300" />
+                        )}
                       </div>
                       {onlineUsers.includes(chat.user._id) && (
-                        <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-gray-900" />
+                        <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-gray-900 z-10" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -229,8 +246,16 @@ const ChatSidebar = ({
           href={"/profile"}
           className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors"
         >
-          <div className="p-1.5 bg-gray-700 rounded-lg">
-            <UserCircle className="w-4 h-4 text-gray-300" />
+          <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border border-gray-600 flex-shrink-0">
+            {loggedInUser?.profilePic?.url ? (
+              <img
+                src={loggedInUser.profilePic.url}
+                alt="Profile"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <UserCircle className="w-5 h-5 text-gray-300" />
+            )}
           </div>
           <span className="font-medium text-gray-300">Profile</span>
         </Link>
