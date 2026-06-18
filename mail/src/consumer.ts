@@ -21,9 +21,9 @@ export const startSendOtpConsumer = async () => {
     console.log("✅ Mail Service consumer started, listening for otp emails");
 
     const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
+      host: process.env.SMTP_HOST || "smtp.gmail.com",
+      port: Number(process.env.SMTP_PORT) || 587,
+      secure: process.env.SMTP_SECURE === "true", // true for 465, false for 587 (STARTTLS)
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
@@ -31,7 +31,7 @@ export const startSendOtpConsumer = async () => {
       pool: true,
       maxConnections: 1,
       maxMessages: 3,
-      debug: false, // set true if you need SMTP wire logs
+      debug: false,
     });
 
     try {
