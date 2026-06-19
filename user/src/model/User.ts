@@ -8,6 +8,8 @@ export interface IUser extends Document {
     url: string;
     publicId: string;
   };
+  lastSeen?: Date;
+  showLastSeen?: boolean;
 }
 
 const schema: Schema<IUser> = new Schema(
@@ -28,6 +30,14 @@ const schema: Schema<IUser> = new Schema(
     profilePic: {
       url: String,
       publicId: String,
+    },
+    lastSeen: {
+      type: Date,
+      default: Date.now,
+    },
+    showLastSeen: {
+      type: Boolean,
+      default: true,
     },
   },
   {

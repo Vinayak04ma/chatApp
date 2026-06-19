@@ -1,6 +1,9 @@
 import { Server, Socket } from "socket.io";
 import http from "http";
 import express from "express";
+import axios from "axios";
+import { Chat } from "../models/Chat.js";
+import { Messages } from "../models/Messages.js";
 
 const app = express();
 
@@ -61,6 +64,41 @@ io.on("connection", (socket: Socket) => {
     console.log(`User ${userId} left chat room ${chatId}`);
   });
 
+  socket.on("messageSeen", async (data) => {
+    const { chatId, messageIds, userId } = data;
+    console.log(`Messages ${messageIds} in chat ${chatId} seen by user ${userId}`);
+
+    try {
+      await Messages.updateMany(
+        {
+          _id: { $in: messageIds },
+          seen: false,
+        },
+        {
+          seen: true,
+          seenAt: new Date(),
+        }
+      );
+
+      const chat = await Chat.findById(chatId);
+      if (chat) {
+        const otherUserId = chat.users.find((id) => id.toString() !== userId.toString());
+        if (otherUserId) {
+          const receiverSocketId = getRecieverSocketId(otherUserId.toString());
+          if (receiverSocketId) {
+            io.to(receiverSocketId).emit("messagesSeen", {
+              chatId,
+              seenBy: userId,
+              messageIds,
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error updating message seen status:", err);
+    }
+  });
+
   // Call Signaling
   socket.on("callUser", (data) => {
     const receiverSocketId = getRecieverSocketId(data.userToCall);
@@ -95,13 +133,20 @@ io.on("connection", (socket: Socket) => {
     }
   });
 
-  socket.on("disconnect", () => {
+  socket.on("disconnect", async () => {
     console.log("User Disconnected", socket.id);
 
     if (userId) {
       delete userSocketMap[userId];
       console.log(`User ${userId} removed from online users`);
       io.emit("getOnlineUser", Object.keys(userSocketMap));
+
+      // Update lastSeen in user service
+      try {
+        await axios.put(`${process.env.USER_SERVICE}/api/v1/user/internal/${userId}/lastseen`);
+      } catch (err) {
+        console.error("Failed to update last seen on disconnect:", err);
+      }
     }
   });
 

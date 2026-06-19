@@ -344,3 +344,211 @@ export const getMessagesByChat = TryCatch(
     }
   }
 );
+
+export const deleteMessage = TryCatch(
+  async (req: AuthenticatedRequest, res) => {
+    const userId = req.user?._id;
+    const { messageId } = req.params;
+
+    if (!userId) {
+      res.status(401).json({
+        message: "Unauthorized",
+      });
+      return;
+    }
+
+    const message = await Messages.findById(messageId);
+    if (!message) {
+      res.status(404).json({
+        message: "Message not found",
+      });
+      return;
+    }
+
+    if (message.sender.toString() !== userId.toString()) {
+      res.status(403).json({
+        message: "You can only delete your own messages",
+      });
+      return;
+    }
+
+    const chatId = message.chatId;
+    await Messages.findByIdAndDelete(messageId);
+
+    // If it was the latest message, we need to update the chat
+    const chat = await Chat.findById(chatId);
+    if (chat) {
+      const latestMsg = await Messages.findOne({ chatId }).sort({
+        createdAt: -1,
+      });
+      if (latestMsg) {
+        let latestText = "";
+        if (latestMsg.messageType === "image") {
+          latestText = "📷 Image";
+        } else if (latestMsg.messageType === "audio") {
+          latestText = "🎵 Voice message";
+        } else {
+          latestText = latestMsg.text || "";
+        }
+        await Chat.findByIdAndUpdate(chatId, {
+          latestMessage: {
+            text: latestText,
+            sender: latestMsg.sender,
+          },
+        });
+      } else {
+        await Chat.findByIdAndUpdate(chatId, {
+          $unset: { latestMessage: "" },
+        });
+      }
+    }
+
+    // Emit socket event
+    io.to(chatId.toString()).emit("messageDeleted", { chatId, messageId });
+
+    if (chat) {
+      const otherUserId = chat.users.find(
+        (id) => id.toString() !== userId.toString()
+      );
+      if (otherUserId) {
+        const receiverSocketId = getRecieverSocketId(otherUserId.toString());
+        if (receiverSocketId) {
+          io.to(receiverSocketId).emit("messageDeleted", { chatId, messageId });
+        }
+      }
+    }
+
+    res.json({
+      message: "Message deleted successfully",
+    });
+  }
+);
+
+export const editMessage = TryCatch(
+  async (req: AuthenticatedRequest, res) => {
+    const userId = req.user?._id;
+    const { messageId } = req.params;
+    const { text } = req.body;
+
+    if (!userId) {
+      res.status(401).json({
+        message: "Unauthorized",
+      });
+      return;
+    }
+
+    if (!text || !text.trim()) {
+      res.status(400).json({
+        message: "Text content is required to edit",
+      });
+      return;
+    }
+
+    const message = await Messages.findById(messageId);
+    if (!message) {
+      res.status(404).json({
+        message: "Message not found",
+      });
+      return;
+    }
+
+    if (message.sender.toString() !== userId.toString()) {
+      res.status(403).json({
+        message: "You can only edit your own messages",
+      });
+      return;
+    }
+
+    message.text = text;
+    const updatedMessage = await message.save();
+
+    // If it is the latest message, update the chat's latestMessage
+    const chatId = message.chatId;
+    const chat = await Chat.findById(chatId);
+    if (chat) {
+      const latestMsg = await Messages.findOne({ chatId }).sort({
+        createdAt: -1,
+      });
+      if (latestMsg && (latestMsg._id as any).toString() === messageId) {
+        await Chat.findByIdAndUpdate(chatId, {
+          latestMessage: {
+            text: text,
+            sender: userId,
+          },
+        });
+      }
+    }
+
+    // Emit socket event
+    io.to(chatId.toString()).emit("messageEdited", updatedMessage);
+
+    if (chat) {
+      const otherUserId = chat.users.find(
+        (id) => id.toString() !== userId.toString()
+      );
+      if (otherUserId) {
+        const receiverSocketId = getRecieverSocketId(otherUserId.toString());
+        if (receiverSocketId) {
+          io.to(receiverSocketId).emit("messageEdited", updatedMessage);
+        }
+      }
+    }
+
+    res.json({
+      message: updatedMessage,
+    });
+  }
+);
+
+export const deleteChat = TryCatch(
+  async (req: AuthenticatedRequest, res) => {
+    const userId = req.user?._id;
+    const { chatId } = req.params;
+
+    if (!userId) {
+      res.status(401).json({
+        message: "Unauthorized",
+      });
+      return;
+    }
+
+    const chat = await Chat.findById(chatId);
+    if (!chat) {
+      res.status(404).json({
+        message: "Chat not found",
+      });
+      return;
+    }
+
+    const isUserInChat = chat.users.some(
+      (id) => id.toString() === userId.toString()
+    );
+
+    if (!isUserInChat) {
+      res.status(403).json({
+        message: "You are not a participant of this chat",
+      });
+      return;
+    }
+
+    await Chat.findByIdAndDelete(chatId);
+    await Messages.deleteMany({ chatId });
+
+    // Emit socket event to participants
+    io.to(chatId).emit("chatDeleted", { chatId });
+
+    const otherUserId = chat.users.find(
+      (id) => id.toString() !== userId.toString()
+    );
+    if (otherUserId) {
+      const receiverSocketId = getRecieverSocketId(otherUserId.toString());
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit("chatDeleted", { chatId });
+      }
+    }
+
+    res.json({
+      message: "Chat deleted successfully",
+    });
+  }
+);

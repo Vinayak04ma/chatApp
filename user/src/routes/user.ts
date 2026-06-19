@@ -6,6 +6,7 @@ import {
   myProfile,
   updateName,
   verifyUser,
+  updateLastSeenInternal,
 } from "../controllers/user.js";
 import { isAuth } from "../middleware/isAuth.js";
 import { upload } from "../middleware/multer.js";
@@ -18,5 +19,7 @@ router.get("/me", isAuth, myProfile);
 router.get("/user/all", isAuth, getAllUsers);
 router.get("/user/:id", getAUser);
 router.post("/update/user", isAuth, upload.single("file"), updateName);
+router.put("/user/internal/:id/lastseen", updateLastSeenInternal);
 
 export default router;
+

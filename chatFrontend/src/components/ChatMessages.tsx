@@ -1,21 +1,27 @@
 import { Message } from "@/app/chat/page";
 import { User } from "@/context/AppContext";
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import moment from "moment";
-import { Check, CheckCheck, Clock } from "lucide-react";
+import { Check, CheckCheck, Clock, Pencil, Trash2, X } from "lucide-react";
 
 interface ChatMessagesProps {
   selectedUser: string | null;
   messages: Message[] | null;
   loggedInUser: User | null;
+  onDeleteMessage: (messageId: string) => void;
+  onEditMessage: (messageId: string, newText: string) => void;
 }
 
 const ChatMessages = ({
   selectedUser,
   messages,
   loggedInUser,
+  onDeleteMessage,
+  onEditMessage,
 }: ChatMessagesProps) => {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState<string>("");
 
   //   seen feature
   const uniqueMessages = useMemo(() => {
@@ -42,7 +48,7 @@ const ChatMessages = ({
           </p>
         ) : (
           <>
-            {uniqueMessages.map((e, i) => {
+             {uniqueMessages.map((e, i) => {
               const isSentByMe = e.sender === loggedInUser?._id;
               const uniqueKey = `${e._id}-${i}`;
 
@@ -53,34 +59,98 @@ const ChatMessages = ({
                   }`}
                   key={uniqueKey}
                 >
-                  <div
-                    className={`rounded-lg p-3 max-w-sm transition-opacity duration-300 ${
-                      isSentByMe
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-700 text-white"
-                    } ${e.isSending ? "opacity-60" : ""}`}
-                  >
-                    {e.messageType === "image" && e.image && (
-                      <div className="relative group">
-                        <img
-                          src={e.image.url}
-                          alt="shared image"
-                          className="max-w-full h-auto rounded-lg"
-                        />
+                  <div className={`flex items-center gap-2 group max-w-sm ${isSentByMe ? "flex-row-reverse" : "flex-row"}`}>
+                    <div
+                      className={`rounded-lg p-3 transition-opacity duration-300 relative ${
+                        isSentByMe
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-700 text-white"
+                      } ${e.isSending ? "opacity-60" : ""}`}
+                    >
+                      {editingMessageId === e._id ? (
+                        <div className="flex flex-col gap-2 min-w-[200px]">
+                          <textarea
+                            value={editingText}
+                            onChange={(event) => setEditingText(event.target.value)}
+                            className="bg-gray-800 text-white p-2 rounded border border-gray-600 focus:outline-none focus:border-blue-500 text-sm resize-none w-full"
+                            rows={2}
+                            autoFocus
+                          />
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => setEditingMessageId(null)}
+                              className="p-1 hover:bg-gray-600 rounded text-red-400 transition-colors"
+                              title="Cancel"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                onEditMessage(e._id, editingText);
+                                setEditingMessageId(null);
+                              }}
+                              className="p-1 hover:bg-gray-600 rounded text-green-400 transition-colors"
+                              title="Save"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {e.messageType === "image" && e.image && (
+                            <div className="relative group">
+                              <img
+                                src={e.image.url}
+                                alt="shared image"
+                                className="max-w-full h-auto rounded-lg"
+                              />
+                            </div>
+                          )}
+
+                          {e.messageType === "audio" && e.audio && (
+                            <div className="relative group min-w-[240px] py-1">
+                              <audio
+                                src={e.audio.url}
+                                controls
+                                className="max-w-full h-9 rounded filter invert opacity-90"
+                              />
+                            </div>
+                          )}
+
+                          {e.text && <p className="mt-1">{e.text}</p>}
+                        </>
+                      )}
+                    </div>
+
+                    {/* Action buttons on hover */}
+                    {isSentByMe && !e.isSending && editingMessageId !== e._id && (
+                      <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 transition-opacity duration-200">
+                        {e.messageType === "text" && (
+                          <button
+                            onClick={() => {
+                              setEditingMessageId(e._id);
+                              setEditingText(e.text || "");
+                            }}
+                            className="p-1 hover:bg-gray-800 rounded text-gray-400 hover:text-blue-400 transition-colors border border-gray-700 bg-gray-900/60"
+                            title="Edit message"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            if (confirm("Delete this message?")) {
+                              onDeleteMessage(e._id);
+                            }
+                          }}
+                          className="p-1 hover:bg-gray-800 rounded text-gray-400 hover:text-red-400 transition-colors border border-gray-700 bg-gray-900/60"
+                          title="Delete message"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     )}
-
-                    {e.messageType === "audio" && e.audio && (
-                      <div className="relative group min-w-[240px] py-1">
-                        <audio
-                          src={e.audio.url}
-                          controls
-                          className="max-w-full h-9 rounded filter invert opacity-90"
-                        />
-                      </div>
-                    )}
-
-                    {e.text && <p className="mt-1">{e.text}</p>}
                   </div>
 
                   <div

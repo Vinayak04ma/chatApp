@@ -25,6 +25,8 @@ export interface User {
     url: string;
     publicId: string;
   };
+  lastSeen?: string;
+  showLastSeen?: boolean;
 }
 
 export interface Chat {

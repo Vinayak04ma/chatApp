@@ -295,6 +295,19 @@ export function useChatState() {
       console.log("Recieved new message:", message);
 
       if (selectedUser === message.chatId) {
+        const isFromOtherUser = message.sender !== loggedInUser?._id;
+        const finalMessage = isFromOtherUser
+          ? { ...message, seen: true, seenAt: new Date().toISOString() }
+          : message;
+
+        if (isFromOtherUser) {
+          socket?.emit("messageSeen", {
+            chatId: selectedUser,
+            messageIds: [message._id],
+            userId: loggedInUser?._id,
+          });
+        }
+
         setMessages((prev) => {
           const currentMessages = prev || [];
           const messageExists = currentMessages.some(
@@ -302,12 +315,14 @@ export function useChatState() {
           );
 
           if (!messageExists) {
-            return [...currentMessages, message];
+            return [...currentMessages, finalMessage];
           }
-          return currentMessages;
+          return currentMessages.map((msg) =>
+            msg._id === message._id ? finalMessage : msg
+          );
         });
 
-        moveChatToTop(message.chatId, message, false);
+        moveChatToTop(message.chatId, finalMessage, false);
       } else {
         moveChatToTop(message.chatId, message, true);
       }
@@ -357,11 +372,47 @@ export function useChatState() {
       }
     });
 
+    socket?.on("messageDeleted", (data) => {
+      console.log("Message deleted:", data);
+      if (selectedUser === data.chatId) {
+        setMessages((prev) => {
+          if (!prev) return null;
+          return prev.filter((msg) => msg._id !== data.messageId);
+        });
+      }
+      fetchChats();
+    });
+
+    socket?.on("messageEdited", (data) => {
+      console.log("Message edited:", data);
+      if (selectedUser === data.chatId) {
+        setMessages((prev) => {
+          if (!prev) return null;
+          return prev.map((msg) =>
+            msg._id === data._id ? { ...msg, text: data.text } : msg
+          );
+        });
+      }
+      fetchChats();
+    });
+
+    socket?.on("chatDeleted", (data) => {
+      console.log("Chat deleted:", data);
+      if (selectedUser === data.chatId) {
+        setSelectedUser(null);
+        setMessages(null);
+      }
+      fetchChats();
+    });
+
     return () => {
       socket?.off("newMessage");
       socket?.off("messagesSeen");
       socket?.off("userTyping");
       socket?.off("userStoppedTyping");
+      socket?.off("messageDeleted");
+      socket?.off("messageEdited");
+      socket?.off("chatDeleted");
     };
   }, [socket, selectedUser, setChats, loggedInUser?._id]);
 
@@ -389,6 +440,68 @@ export function useChatState() {
     };
   }, [typingTimeOut]);
 
+  const handleDeleteMessage = async (messageId: string) => {
+    const token = Cookies.get("token");
+    try {
+      await axios.delete(`${chat_service}/api/v1/message/${messageId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setMessages((prev) => {
+        if (!prev) return null;
+        return prev.filter((msg) => msg._id !== messageId);
+      });
+      toast.success("Message deleted");
+      fetchChats();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to delete message");
+    }
+  };
+
+  const handleEditMessage = async (messageId: string, newText: string) => {
+    if (!newText.trim()) return;
+    const token = Cookies.get("token");
+    try {
+      await axios.put(
+        `${chat_service}/api/v1/message/${messageId}`,
+        { text: newText },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setMessages((prev) => {
+        if (!prev) return null;
+        return prev.map((msg) =>
+          msg._id === messageId ? { ...msg, text: newText } : msg
+        );
+      });
+      toast.success("Message updated");
+      fetchChats();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to edit message");
+    }
+  };
+
+  const handleDeleteChat = async (chatId: string) => {
+    const token = Cookies.get("token");
+    try {
+      await axios.delete(`${chat_service}/api/v1/chat/${chatId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setSelectedUser(null);
+      setMessages(null);
+      toast.success("Chat deleted");
+      fetchChats();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to delete chat");
+    }
+  };
+
   return {
     loading,
     siderbarOpen,
@@ -409,5 +522,8 @@ export function useChatState() {
     message,
     handleTyping,
     handleMessageSend,
+    handleDeleteMessage,
+    handleEditMessage,
+    handleDeleteChat,
   };
 }

@@ -32,6 +32,9 @@ const ChatApp = () => {
     message,
     handleTyping,
     handleMessageSend,
+    handleDeleteMessage,
+    handleEditMessage,
+    handleDeleteChat,
   } = useChatState();
 
   const [profilePanelOpen, setProfilePanelOpen] = useState(false);
@@ -68,12 +71,15 @@ const ChatApp = () => {
           isTyping={isTyping}
           onlineUsers={onlineUsers}
           onHeaderClick={() => setProfilePanelOpen(!profilePanelOpen)}
+          onDeleteChat={() => handleDeleteChat(selectedUser!)}
         />
 
         <ChatMessages
           selectedUser={selectedUser}
           messages={messages}
           loggedInUser={loggedInUser}
+          onDeleteMessage={handleDeleteMessage}
+          onEditMessage={handleEditMessage}
         />
 
         <MessageInput

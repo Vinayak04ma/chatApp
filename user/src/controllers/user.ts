@@ -99,6 +99,9 @@ export const updateName = TryCatch(async (req: AuthenticatedRequest, res) => {
   if (req.body) {
     if (req.body.name) user.name = req.body.name;
     if (req.body.about !== undefined) user.about = req.body.about;
+    if (req.body.showLastSeen !== undefined) {
+      user.showLastSeen = req.body.showLastSeen === "true" || req.body.showLastSeen === true;
+    }
   }
 
   if (req.file) {
@@ -127,4 +130,20 @@ export const getAllUsers = TryCatch(async (req: AuthenticatedRequest, res) => {
 export const getAUser = TryCatch(async (req, res) => {
   const user = await User.findById(req.params.id);
   res.json(user);
+});
+
+export const updateLastSeenInternal = TryCatch(async (req, res) => {
+  const user = await User.findById(req.params.id);
+  if (!user) {
+    res.status(404).json({
+      message: "User not found",
+    });
+    return;
+  }
+  user.lastSeen = new Date();
+  await user.save();
+  res.json({
+    message: "Last seen updated",
+    user,
+  });
 });

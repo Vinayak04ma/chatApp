@@ -1,7 +1,8 @@
 import { User } from "@/context/AppContext";
-import { Menu, UserCircle, Phone, Video } from "lucide-react";
+import { Menu, UserCircle, Phone, Video, Trash2 } from "lucide-react";
 import React from "react";
 import { CallData } from "@/context/CallContext";
+import moment from "moment";
 
 interface ChatHeaderProps {
   user: User | null;
@@ -9,6 +10,7 @@ interface ChatHeaderProps {
   isTyping: boolean;
   onlineUsers: string[];
   onHeaderClick?: () => void;
+  onDeleteChat?: () => void;
 }
 
 const ChatHeader = ({
@@ -17,9 +19,16 @@ const ChatHeader = ({
   isTyping,
   onlineUsers,
   onHeaderClick,
+  onDeleteChat,
 }: ChatHeaderProps) => {
   const isOnlineUser = user && onlineUsers.includes(user._id);
   const { callUser } = CallData();
+
+  const handleConfirmDelete = () => {
+    if (confirm("Are you sure you want to delete this chat and all its messages? This action cannot be undone.")) {
+      if (onDeleteChat) onDeleteChat();
+    }
+  };
 
   return (
     <>
@@ -102,7 +111,15 @@ const ChatHeader = ({
                             isOnlineUser ? "text-green-500" : "text-gray-400"
                           }`}
                         >
-                          {isOnlineUser ? "Online" : "Offline"}{" "}
+                          {isOnlineUser ? (
+                            "Online"
+                          ) : (
+                            user.showLastSeen !== false && user.lastSeen ? (
+                              `Last seen ${moment(user.lastSeen).fromNow()}`
+                            ) : (
+                              "Offline"
+                            )
+                          )}
                         </span>
                       </div>
                     )}
@@ -125,6 +142,13 @@ const ChatHeader = ({
                   title="Video Call"
                 >
                   <Video className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={handleConfirmDelete}
+                  className="p-3 bg-gray-700 hover:bg-red-600/80 text-gray-300 hover:text-white rounded-full transition-all hover:scale-105 active:scale-95 border border-gray-600/50"
+                  title="Delete Chat"
+                >
+                  <Trash2 className="w-5 h-5" />
                 </button>
               </div>
             </>

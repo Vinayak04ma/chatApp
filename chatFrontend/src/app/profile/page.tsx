@@ -18,6 +18,43 @@ const ProfilePage = () => {
 
   const router = useRouter();
 
+  const [showLastSeen, setShowLastSeen] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      setShowLastSeen(user.showLastSeen !== false);
+    }
+  }, [user]);
+
+  const toggleLastSeen = async () => {
+    const newValue = !showLastSeen;
+    setShowLastSeen(newValue);
+    const token = Cookies.get("token");
+    try {
+      const { data } = await axios.post(
+        `${user_service}/api/v1/update/user`,
+        { showLastSeen: newValue },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      Cookies.set("token", data.token, {
+        expires: 15,
+        secure: false,
+        path: "/",
+      });
+
+      setUser(data.user);
+      toast.success(`Last seen privacy updated to ${newValue ? "ON" : "OFF"}`);
+    } catch (error: any) {
+      setShowLastSeen(!newValue); // rollback
+      toast.error(error.response?.data?.message || "Failed to update last seen privacy");
+    }
+  };
+
   const editHandler = () => {
     setIsEdit(!isEdit);
     setName(user?.name);
@@ -252,6 +289,29 @@ const ProfilePage = () => {
                     </button>
                   </div>
                 )}
+              </div>
+
+              <div className="border-t border-gray-700 pt-6">
+                <h3 className="text-lg font-bold text-white mb-4">Privacy Settings</h3>
+                <div className="flex items-center justify-between p-4 bg-gray-700 rounded-lg border border-gray-600">
+                  <div>
+                    <h4 className="text-white font-medium text-lg">Last Seen Status</h4>
+                    <p className="text-sm text-gray-400 mt-0.5">Allow others to see when you were last online</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={toggleLastSeen}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                      showLastSeen ? "bg-blue-600" : "bg-gray-600"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        showLastSeen ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
