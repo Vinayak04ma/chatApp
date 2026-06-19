@@ -6,13 +6,14 @@
 
 ## 🚀 Key Features
 
-*   💬 **Real-time Chatting:** Low-latency text messaging powered by WebSockets (Socket.IO).
+*   💬 **Real-time Chatting & Private Groups:** Low-latency text messaging powered by WebSockets (Socket.IO). Supports 1-on-1 private messaging and multi-user **Private Group Chats** complete with custom group names, descriptions, and avatars.
 *   🎙️ **Voice Messaging Support:** Record, preview, and play back voice notes. Voice recordings are uploaded to Cloudinary asynchronously, leveraging an **Optimistic UI Update** model for instant client-side rendering.
-*   📞 **P2P Voice & Video Calling:** Peer-to-peer audio and video calls established via **WebRTC** (`RTCPeerConnection` with Google STUN servers) utilizing socket-based signaling.
+*   📞 **P2P Voice & Video Calling:** Peer-to-peer audio and video calls established via **WebRTC** (`RTCPeerConnection` with Google STUN servers) utilizing socket-based signaling (automatically hidden for group chats).
 *   ⚡ **Optimistic UI Updates:** Messages immediately appear in the feed with a loading indicator (pulsing clock icon) and lower opacity while uploads/saves complete in the background.
 *   📧 **OTP Email Authentication:** Dynamic OTP generation. Registration initiates background email notifications processed asynchronously through a **RabbitMQ** mail consumer.
-*   🟢 **Online Status & Typing Indicators:** Real-time presence indicators and active typing feedback.
-*   🗂️ **Cloud Media Storage:** Direct media hosting for photos and voice notes integrated with **Cloudinary**.
+*   🟢 **Presence & Privacy Controls:** Real-time presence indicators, active typing feedback, **Double Blue Ticks** for seen status, and **Last Seen Privacy** toggle to control your online status visibility.
+*   🗂️ **Cloud Media Storage & Onboarding:** Direct media hosting for photos and voice notes integrated with **Cloudinary**. Includes a customizable **Onboarding Profile Setup** wizard after registration to assign usernames, display names, bios, and upload avatars.
+*   🔒 **Account Deletion:** Secure account removal option using email-based **OTP Verification** processing.
 
 ---
 
