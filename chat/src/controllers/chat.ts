@@ -10,6 +10,22 @@ const userCache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes TTL
 
 async function fetchUserWithCache(userId: string) {
+  if (userId === "66d0000000000000000000a2") {
+    return {
+      _id: "66d0000000000000000000a2",
+      name: "Meta AI",
+      username: "meta.ai",
+      about: "Meta AI assistant. Type anything to start talking!",
+      profilePic: {
+        url: "https://upload.wikimedia.org/wikipedia/commons/0/05/Meta_AI_logo.svg",
+        publicId: "",
+      },
+      email: "meta-ai@chatify.com",
+      isGroup: false,
+      showLastSeen: false,
+    };
+  }
+
   const now = Date.now();
   const cached = userCache.get(userId);
   if (cached && (now - cached.timestamp < CACHE_TTL)) {
@@ -68,6 +84,21 @@ export const getAllChats = TryCatch(async (req: AuthenticatedRequest, res) => {
     return;
   }
 
+  // Find or create the Meta AI chat for this user
+  let metaAiChat = await Chat.findOne({
+    isGroup: false,
+    users: { $all: [userId.toString(), "66d0000000000000000000a2"] }
+  });
+  if (!metaAiChat) {
+    metaAiChat = await Chat.create({
+      users: [userId.toString(), "66d0000000000000000000a2"],
+      isGroup: false,
+      groupName: "",
+      groupDescription: "",
+      groupPic: undefined,
+    });
+  }
+
   const chats = await Chat.find({ users: userId }).sort({ updatedAt: -1 });
 
   const chatWithUserData = await Promise.all(
@@ -97,6 +128,7 @@ export const getAllChats = TryCatch(async (req: AuthenticatedRequest, res) => {
       }
 
       const otherUserId = chat.users.find((id) => id !== userId);
+      const isMetaAI = otherUserId === "66d0000000000000000000a2";
 
       try {
         const userData = await fetchUserWithCache(otherUserId!);
@@ -105,7 +137,10 @@ export const getAllChats = TryCatch(async (req: AuthenticatedRequest, res) => {
           user: userData || { _id: otherUserId, name: "Unknown User" },
           chat: {
             ...chat.toObject(),
-            latestMessage: chat.latestMessage || null,
+            latestMessage: chat.latestMessage || (isMetaAI ? {
+              text: "Ask Meta AI anything...",
+              sender: "66d0000000000000000000a2",
+            } : null),
             unseenCount,
           },
         };
@@ -115,47 +150,16 @@ export const getAllChats = TryCatch(async (req: AuthenticatedRequest, res) => {
           user: { _id: otherUserId, name: "Unknown User" },
           chat: {
             ...chat.toObject(),
-            latestMessage: chat.latestMessage || null,
+            latestMessage: chat.latestMessage || (isMetaAI ? {
+              text: "Ask Meta AI anything...",
+              sender: "66d0000000000000000000a2",
+            } : null),
             unseenCount,
           },
         };
       }
     })
   );
-
-  const hasMetaAIChat = chatWithUserData.some(c => ((c.chat as any)?._id || "").toString() === "66d0000000000000000000a1");
-  if (!hasMetaAIChat) {
-    const lastAiMessage = await Messages.findOne({ chatId: "66d0000000000000000000a1" }).sort({ createdAt: -1 });
-    chatWithUserData.unshift({
-      user: {
-        _id: "66d0000000000000000000a2",
-        name: "Meta AI",
-        username: "meta.ai",
-        about: "Meta AI assistant. Type anything to start talking!",
-        profilePic: {
-          url: "https://upload.wikimedia.org/wikipedia/commons/0/05/Meta_AI_logo.svg",
-          publicId: "",
-        },
-        email: "meta-ai@chatify.com",
-        isGroup: false,
-        showLastSeen: false,
-      },
-      chat: {
-        _id: "66d0000000000000000000a1" as any,
-        users: [userId, "66d0000000000000000000a2"] as any,
-        latestMessage: lastAiMessage ? {
-          text: lastAiMessage.text || "",
-          sender: lastAiMessage.sender.toString(),
-        } : {
-          text: "Ask Meta AI anything...",
-          sender: "66d0000000000000000000a2"
-        },
-        createdAt: new Date(),
-        updatedAt: lastAiMessage ? lastAiMessage.createdAt : new Date(0),
-        unseenCount: 0,
-      } as any
-    });
-  }
 
   // Sort chats by updatedAt descending so Meta AI behaves dynamically like normal chats
   chatWithUserData.sort((a, b) => new Date(b.chat.updatedAt).getTime() - new Date(a.chat.updatedAt).getTime());
@@ -192,8 +196,18 @@ export const sendMessage = TryCatch(async (req: AuthenticatedRequest, res) => {
     return;
   }
 
-  let chat;
-  if (chatId === "66d0000000000000000000a1") {
+  let chat = await Chat.findById(chatId);
+
+  if (!chat) {
+    res.status(404).json({
+      message: "Chat not found",
+    });
+    return;
+  }
+
+  const isMetaAI = chat.users.some(id => id.toString() === "66d0000000000000000000a2");
+
+  if (isMetaAI) {
     // Save user's message
     const userMessage = await Messages.create({
       chatId,
@@ -202,6 +216,14 @@ export const sendMessage = TryCatch(async (req: AuthenticatedRequest, res) => {
       messageType: "text",
       seen: true,
       seenAt: new Date()
+    });
+
+    await Chat.findByIdAndUpdate(chatId, {
+      latestMessage: {
+        text: text || "Sent media",
+        sender: senderId,
+      },
+      updatedAt: new Date()
     });
 
     res.status(201).json({
@@ -213,7 +235,7 @@ export const sendMessage = TryCatch(async (req: AuthenticatedRequest, res) => {
       const userSocket = getRecieverSocketId(senderId.toString());
       if (userSocket) {
         io.to(userSocket).emit("userTyping", {
-          chatId: "66d0000000000000000000a1",
+          chatId,
           userId: "66d0000000000000000000a2",
         });
       }
@@ -226,7 +248,7 @@ export const sendMessage = TryCatch(async (req: AuthenticatedRequest, res) => {
 
       if (geminiKey) {
         try {
-          const previousMessages = await Messages.find({ chatId: "66d0000000000000000000a1" })
+          const previousMessages = await Messages.find({ chatId })
             .sort({ createdAt: 1 })
             .limit(10);
 
@@ -269,7 +291,7 @@ export const sendMessage = TryCatch(async (req: AuthenticatedRequest, res) => {
       }
 
       const aiMessage = await Messages.create({
-        chatId: "66d0000000000000000000a1",
+        chatId,
         sender: "66d0000000000000000000a2",
         text: aiResponseText,
         messageType: "text",
@@ -277,9 +299,17 @@ export const sendMessage = TryCatch(async (req: AuthenticatedRequest, res) => {
         seenAt: new Date()
       });
 
+      await Chat.findByIdAndUpdate(chatId, {
+        latestMessage: {
+          text: aiResponseText,
+          sender: "66d0000000000000000000a2",
+        },
+        updatedAt: new Date()
+      });
+
       if (userSocket) {
         io.to(userSocket).emit("userStoppedTyping", {
-          chatId: "66d0000000000000000000a1",
+          chatId,
           userId: "66d0000000000000000000a2",
         });
         io.to(userSocket).emit("newMessage", aiMessage);
@@ -287,8 +317,6 @@ export const sendMessage = TryCatch(async (req: AuthenticatedRequest, res) => {
     })();
     return;
   }
-
-  chat = await Chat.findById(chatId);
 
   if (!chat) {
     res.status(404).json({
@@ -434,56 +462,6 @@ export const getMessagesByChat = TryCatch(
       return;
     }
 
-    if (chatId === "66d0000000000000000000a1") {
-      const messages = await Messages.find({ chatId }).sort({ createdAt: 1 });
-      if (messages.length === 0) {
-        const welcomeMessage = {
-          _id: "66d0000000000000000000a3",
-          chatId: "66d0000000000000000000a1",
-          sender: "66d0000000000000000000a2",
-          text: "Hello! I'm Meta AI. How can I help you today? You can ask me any questions or type a prompt to get started!",
-          messageType: "text",
-          seen: true,
-          createdAt: new Date().toISOString(),
-        };
-        res.json({
-          messages: [welcomeMessage],
-          user: {
-            _id: "66d0000000000000000000a2",
-            name: "Meta AI",
-            username: "meta.ai",
-            about: "Meta AI assistant. Type anything to start talking!",
-            profilePic: {
-              url: "https://upload.wikimedia.org/wikipedia/commons/0/05/Meta_AI_logo.svg",
-              publicId: "",
-            },
-            email: "meta-ai@chatify.com",
-            isGroup: false,
-            showLastSeen: false,
-          },
-        });
-        return;
-      }
-
-      res.json({
-        messages,
-        user: {
-          _id: "66d0000000000000000000a2",
-          name: "Meta AI",
-          username: "meta.ai",
-          about: "Meta AI assistant. Type anything to start talking!",
-          profilePic: {
-            url: "https://upload.wikimedia.org/wikipedia/commons/0/05/Meta_AI_logo.svg",
-            publicId: "",
-          },
-          email: "meta-ai@chatify.com",
-          isGroup: false,
-          showLastSeen: false,
-        },
-      });
-      return;
-    }
-
     const chat = await Chat.findById(chatId);
 
     if (!chat) {
@@ -523,6 +501,37 @@ export const getMessagesByChat = TryCatch(
     );
 
     const messages = await Messages.find({ chatId }).sort({ createdAt: 1 });
+
+    const isMetaAI = chat.users.some(id => id.toString() === "66d0000000000000000000a2");
+
+    if (isMetaAI && messages.length === 0) {
+      const welcomeMessage = {
+        _id: "66d0000000000000000000a3",
+        chatId: chatId,
+        sender: "66d0000000000000000000a2",
+        text: "Hello! I'm Meta AI. How can I help you today? You can ask me any questions or type a prompt to get started!",
+        messageType: "text",
+        seen: true,
+        createdAt: new Date().toISOString(),
+      };
+      res.json({
+        messages: [welcomeMessage],
+        user: {
+          _id: "66d0000000000000000000a2",
+          name: "Meta AI",
+          username: "meta.ai",
+          about: "Meta AI assistant. Type anything to start talking!",
+          profilePic: {
+            url: "https://upload.wikimedia.org/wikipedia/commons/0/05/Meta_AI_logo.svg",
+            publicId: "",
+          },
+          email: "meta-ai@chatify.com",
+          isGroup: false,
+          showLastSeen: false,
+        },
+      });
+      return;
+    }
 
     if (chat.isGroup) {
       const participantsData = await Promise.all(

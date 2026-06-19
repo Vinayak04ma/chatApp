@@ -398,11 +398,14 @@ const ChatSidebar = ({
             {/* Meta AI Quick Access button */}
             <button
               onClick={() => {
-                setSelectedUser("66d0000000000000000000a1");
+                const metaChat = chats?.find(c => c.user?._id === "66d0000000000000000000a2");
+                if (metaChat) {
+                  setSelectedUser(metaChat.chat._id);
+                }
                 handleTabChange('chats');
               }}
               className={`p-2.5 rounded-xl transition-all relative group ${
-                selectedUser === "66d0000000000000000000a1" && activeTab === 'chats'
+                chats?.find(c => c.chat._id === selectedUser)?.user?._id === "66d0000000000000000000a2" && activeTab === 'chats'
                   ? "bg-[#2a3942] text-blue-400"
                   : "text-gray-400 hover:text-blue-300 hover:bg-[#2a3942]/50"
               }`}
