@@ -140,7 +140,7 @@ io.on("connection", (socket: Socket) => {
   socket.on("disconnect", async () => {
     console.log("User Disconnected", socket.id);
 
-    if (userId) {
+    if (userId && userSocketMap[userId] === socket.id) {
       delete userSocketMap[userId];
       console.log(`User ${userId} removed from online users`);
       io.emit("getOnlineUser", Object.keys(userSocketMap));
