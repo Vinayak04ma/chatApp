@@ -25,14 +25,35 @@ export const startSendOtpConsumer = async () => {
       return val.replace(/^["']|["']$/g, "").trim();
     };
 
+    const mailProvider = getCleanEnvVar("MAIL_PROVIDER").toLowerCase();
     const resendApiKey = getCleanEnvVar("RESEND_API_KEY");
     const brevoApiKey = getCleanEnvVar("BREVO_API_KEY");
-    const useResend = !!resendApiKey;
-    const useBrevo = !!brevoApiKey;
-    const useExternalApi = useResend || useBrevo;
+
+    // Determine which provider to use
+    let provider: "smtp" | "brevo" | "resend" = "smtp";
+    if (mailProvider === "smtp") {
+      provider = "smtp";
+    } else if (mailProvider === "brevo" && brevoApiKey) {
+      provider = "brevo";
+    } else if (mailProvider === "resend" && resendApiKey) {
+      provider = "resend";
+    } else {
+      // Fallback behavior if MAIL_PROVIDER is not set
+      if (brevoApiKey) {
+        provider = "brevo";
+      } else if (resendApiKey) {
+        provider = "resend";
+      } else {
+        provider = "smtp";
+      }
+    }
+
+    const useBrevo = provider === "brevo";
+    const useResend = provider === "resend";
+    const useSMTP = provider === "smtp";
     let transporter: any;
 
-    if (!useExternalApi) {
+    if (useSMTP) {
       transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST || "smtp.gmail.com",
         port: Number(process.env.SMTP_PORT) || 587,
@@ -56,7 +77,7 @@ export const startSendOtpConsumer = async () => {
         return;
       }
     } else {
-      console.log(`✅ Mail Service using ${useBrevo ? "Brevo" : "Resend"} HTTP API for sending emails`);
+      console.log(`✅ Mail Service using ${provider === "brevo" ? "Brevo" : "Resend"} HTTP API for sending emails`);
     }
 
     channel.consume(queueName, async (msg) => {
