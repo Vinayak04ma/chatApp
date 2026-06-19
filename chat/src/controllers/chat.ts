@@ -276,15 +276,38 @@ export const sendMessage = TryCatch(async (req: AuthenticatedRequest, res) => {
             });
           }
 
-          const response = await axios.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
-            { contents }
-          );
+          const modelsToTry = [
+            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite",
+            "gemini-flash-lite-latest",
+            "gemini-pro-latest"
+          ];
+          
+          let lastErrorMessage = "";
+          for (const model of modelsToTry) {
+            try {
+              const response = await axios.post(
+                `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+                { contents }
+              );
+              
+              if (response.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+                aiResponseText = response.data.candidates[0].content.parts[0].text;
+                break;
+              }
+            } catch (error: any) {
+              const errMsg = error.response?.data?.error?.message || error.message;
+              console.error(`Gemini API error for model ${model}:`, errMsg);
+              lastErrorMessage = errMsg;
+            }
+          }
 
-          aiResponseText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't generate a response.";
-        } catch (error) {
-          console.error("Gemini API error:", error);
-          aiResponseText = "I encountered an error while processing your request. Please try again.";
+          if (!aiResponseText) {
+            aiResponseText = `I encountered an error while processing your request: "${lastErrorMessage}". Please try again.`;
+          }
+        } catch (error: any) {
+          console.error("Gemini context/history processing error:", error);
+          aiResponseText = `I encountered an error while processing your request: "${error.message}". Please try again.`;
         }
       } else {
         aiResponseText = `Hello! I'm Meta AI. I received your message: "${text || "media"}".\n\nTo activate my full AI brain, please add the \`GEMINI_API_KEY\` to your \`chat/.env\` file. You can grab a free key in 10 seconds from Google AI Studio.`;
