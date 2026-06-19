@@ -1,5 +1,5 @@
 import { User } from "@/context/AppContext";
-import { Menu, UserCircle, Phone, Video, Trash2 } from "lucide-react";
+import { Menu, UserCircle, Phone, Video, Trash2, Users } from "lucide-react";
 import React from "react";
 import { CallData } from "@/context/CallContext";
 import moment from "moment";
@@ -21,7 +21,7 @@ const ChatHeader = ({
   onHeaderClick,
   onDeleteChat,
 }: ChatHeaderProps) => {
-  const isOnlineUser = user && onlineUsers.includes(user._id);
+  const isOnlineUser = user && !user.isGroup && onlineUsers.includes(user._id);
   const { callUser } = CallData();
 
   const handleConfirmDelete = () => {
@@ -35,7 +35,7 @@ const ChatHeader = ({
       {/* mobile menu toggle */}
       <div className="sm:hidden fixed top-4 right-4 z-30">
         <button
-          className="p-2.5 bg-[#202c33] rounded-full hover:bg-[#2a3942] transition-colors border border-gray-700/50"
+          className="p-2.5 bg-[#202c33] rounded-full hover:bg-[#2a3942] transition-colors border border-gray-750"
           onClick={() => setSidebarOpen(true)}
         >
           <Menu className="w-5 h-5 text-gray-200" />
@@ -61,6 +61,8 @@ const ChatHeader = ({
                         alt={user.name}
                         className="w-full h-full object-cover"
                       />
+                    ) : user.isGroup ? (
+                      <Users className="w-6 h-6 text-gray-300" />
                     ) : (
                       <UserCircle className="w-6 h-6 text-gray-300" />
                     )}
@@ -103,7 +105,9 @@ const ChatHeader = ({
                           isOnlineUser ? "text-green-400" : "text-gray-400"
                         }`}
                       >
-                        {isOnlineUser ? (
+                        {user.isGroup ? (
+                          user.about || "Group Conversation"
+                        ) : isOnlineUser ? (
                           "Online"
                         ) : (
                           user.showLastSeen !== false && user.lastSeen ? (
@@ -120,20 +124,24 @@ const ChatHeader = ({
 
               {/* call action buttons */}
               <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => callUser(user._id, "voice")}
-                  className="p-2 hover:bg-[#2a3942]/60 text-gray-300 hover:text-white rounded-full transition-colors"
-                  title="Voice Call"
-                >
-                  <Phone className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => callUser(user._id, "video")}
-                  className="p-2 hover:bg-[#2a3942]/60 text-gray-300 hover:text-white rounded-full transition-colors"
-                  title="Video Call"
-                >
-                  <Video className="w-5 h-5" />
-                </button>
+                {!user.isGroup && (
+                  <>
+                    <button
+                      onClick={() => callUser(user._id, "voice")}
+                      className="p-2 hover:bg-[#2a3942]/60 text-gray-300 hover:text-white rounded-full transition-colors"
+                      title="Voice Call"
+                    >
+                      <Phone className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => callUser(user._id, "video")}
+                      className="p-2 hover:bg-[#2a3942]/60 text-gray-300 hover:text-white rounded-full transition-colors"
+                      title="Video Call"
+                    >
+                      <Video className="w-5 h-5" />
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={handleConfirmDelete}
                   className="p-2 hover:bg-red-950/40 hover:text-red-400 text-gray-400 rounded-full transition-colors"

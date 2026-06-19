@@ -418,6 +418,11 @@ export function useChatState() {
       });
     });
 
+    socket?.on("newGroupCreated", (data) => {
+      console.log("New group created:", data);
+      fetchChats();
+    });
+
     return () => {
       socket?.off("newMessage");
       socket?.off("messagesSeen");
@@ -427,6 +432,7 @@ export function useChatState() {
       socket?.off("messageEdited");
       socket?.off("chatDeleted");
       socket?.off("userStatusChanged");
+      socket?.off("newGroupCreated");
     };
   }, [socket, selectedUser, setChats, loggedInUser?._id]);
 

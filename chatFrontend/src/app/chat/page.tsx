@@ -86,6 +86,7 @@ const ChatApp = () => {
 
           <ChatMessages
             selectedUser={selectedUser}
+            user={user}
             messages={messages}
             loggedInUser={loggedInUser}
             onDeleteMessage={handleDeleteMessage}

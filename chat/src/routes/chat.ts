@@ -8,6 +8,8 @@ import {
   deleteMessage,
   editMessage,
   deleteChat,
+  createGroupChat,
+  getChatDetails,
 } from "../controllers/chat.js";
 import { upload } from "../middlewares/multer.js";
 
@@ -16,6 +18,8 @@ const router = express.Router();
 router.post("/chat/new", isAuth, createNewChat);
 router.get("/chat/all", isAuth, getAllChats);
 router.delete("/chat/:chatId", isAuth, deleteChat);
+router.get("/chat/details/:chatId", isAuth, getChatDetails);
+router.post("/group/new", isAuth, upload.single("file"), createGroupChat);
 router.post(
   "/message",
   isAuth,

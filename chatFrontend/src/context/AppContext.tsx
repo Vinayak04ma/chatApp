@@ -28,6 +28,7 @@ export interface User {
   };
   lastSeen?: string;
   showLastSeen?: boolean;
+  isGroup?: boolean;
 }
 
 export interface Chat {

@@ -72,19 +72,37 @@ export const getAllChats = TryCatch(async (req: AuthenticatedRequest, res) => {
 
   const chatWithUserData = await Promise.all(
     chats.map(async (chat) => {
-      const otherUserId = chat.users.find((id) => id !== userId);
-
       const unseenCount = await Messages.countDocuments({
         chatId: chat._id,
         sender: { $ne: userId },
         seen: false,
       });
 
+      if (chat.isGroup) {
+        return {
+          user: {
+            _id: chat._id,
+            name: chat.groupName || "Group Chat",
+            profilePic: chat.groupPic || null,
+            email: "",
+            about: chat.groupDescription || "Group conversation",
+            isGroup: true,
+          },
+          chat: {
+            ...chat.toObject(),
+            latestMessage: chat.latestMessage || null,
+            unseenCount,
+          },
+        };
+      }
+
+      const otherUserId = chat.users.find((id) => id !== userId);
+
       try {
         const userData = await fetchUserWithCache(otherUserId!);
 
         return {
-          user: userData,
+          user: userData || { _id: otherUserId, name: "Unknown User" },
           chat: {
             ...chat.toObject(),
             latestMessage: chat.latestMessage || null,
@@ -161,7 +179,7 @@ export const sendMessage = TryCatch(async (req: AuthenticatedRequest, res) => {
     (userId) => userId.toString() !== senderId.toString()
   );
 
-  if (!otherUserId) {
+  if (!chat.isGroup && !otherUserId) {
     res.status(401).json({
       message: "No other user",
     });
@@ -169,13 +187,16 @@ export const sendMessage = TryCatch(async (req: AuthenticatedRequest, res) => {
   }
 
   //socket setup
-  const receiverSocketId = getRecieverSocketId(otherUserId.toString());
+  let receiverSocketId: string | undefined = undefined;
   let isReceiverInChatRoom = false;
 
-  if (receiverSocketId) {
-    const receiverSocket = io.sockets.sockets.get(receiverSocketId);
-    if (receiverSocket && receiverSocket.rooms.has(chatId)) {
-      isReceiverInChatRoom = true;
+  if (!chat.isGroup && otherUserId) {
+    receiverSocketId = getRecieverSocketId(otherUserId.toString());
+    if (receiverSocketId) {
+      const receiverSocket = io.sockets.sockets.get(receiverSocketId);
+      if (receiverSocket && receiverSocket.rooms.has(chatId)) {
+        isReceiverInChatRoom = true;
+      }
     }
   }
 
@@ -226,21 +247,33 @@ export const sendMessage = TryCatch(async (req: AuthenticatedRequest, res) => {
   //emit to sockets
   io.to(chatId).emit("newMessage", savedMessage);
 
-  if (receiverSocketId) {
-    io.to(receiverSocketId).emit("newMessage", savedMessage);
-  }
-
-  const senderSocketId = getRecieverSocketId(senderId.toString());
-  if (senderSocketId) {
-    io.to(senderSocketId).emit("newMessage", savedMessage);
-  }
-
-  if (isReceiverInChatRoom && senderSocketId) {
-    io.to(senderSocketId).emit("messagesSeen", {
-      chatId: chatId,
-      seenBy: otherUserId,
-      messageIds: [savedMessage._id],
+  if (chat.isGroup) {
+    // Notify all participants
+    chat.users.forEach((pId) => {
+      if (pId.toString() !== senderId.toString()) {
+        const pSocketId = getRecieverSocketId(pId.toString());
+        if (pSocketId) {
+          io.to(pSocketId).emit("newMessage", savedMessage);
+        }
+      }
     });
+  } else {
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("newMessage", savedMessage);
+    }
+
+    const senderSocketId = getRecieverSocketId(senderId.toString());
+    if (senderSocketId) {
+      io.to(senderSocketId).emit("newMessage", savedMessage);
+    }
+
+    if (isReceiverInChatRoom && senderSocketId && otherUserId) {
+      io.to(senderSocketId).emit("messagesSeen", {
+        chatId: chatId,
+        seenBy: otherUserId,
+        messageIds: [savedMessage._id],
+      });
+    }
   }
 
   res.status(201).json({
@@ -307,6 +340,22 @@ export const getMessagesByChat = TryCatch(
     );
 
     const messages = await Messages.find({ chatId }).sort({ createdAt: 1 });
+
+    if (chat.isGroup) {
+      res.json({
+        messages,
+        user: {
+          _id: chat._id,
+          name: chat.groupName || "Group Chat",
+          profilePic: chat.groupPic || null,
+          email: "",
+          about: chat.groupDescription || "Group conversation",
+          isGroup: true,
+        },
+      });
+      return;
+    }
+
     const otherUserId = chat.users.find((id) => id !== userId);
 
     if (!otherUserId) {
@@ -537,18 +586,135 @@ export const deleteChat = TryCatch(
     // Emit socket event to participants
     io.to(chatId).emit("chatDeleted", { chatId });
 
-    const otherUserId = chat.users.find(
-      (id) => id.toString() !== userId.toString()
-    );
-    if (otherUserId) {
-      const receiverSocketId = getRecieverSocketId(otherUserId.toString());
-      if (receiverSocketId) {
-        io.to(receiverSocketId).emit("chatDeleted", { chatId });
+    chat.users.forEach((pId) => {
+      if (pId.toString() !== userId.toString()) {
+        const receiverSocketId = getRecieverSocketId(pId.toString());
+        if (receiverSocketId) {
+          io.to(receiverSocketId).emit("chatDeleted", { chatId });
+        }
       }
-    }
+    });
 
     res.json({
       message: "Chat deleted successfully",
+    });
+  }
+);
+
+export const createGroupChat = TryCatch(
+  async (req: AuthenticatedRequest, res) => {
+    const userId = req.user?._id;
+    const { groupName, groupDescription, participants } = req.body;
+
+    if (!groupName || groupName.trim() === "") {
+      res.status(400).json({
+        message: "Group name is required",
+      });
+      return;
+    }
+
+    // Try parsing participants if it came as a JSON string
+    let parsedParticipants = participants;
+    if (typeof participants === "string") {
+      try {
+        parsedParticipants = JSON.parse(participants);
+      } catch (err) {
+        parsedParticipants = participants.split(",").map((s: string) => s.trim());
+      }
+    }
+
+    if (!parsedParticipants || !Array.isArray(parsedParticipants) || parsedParticipants.length === 0) {
+      res.status(400).json({
+        message: "At least one participant is required",
+      });
+      return;
+    }
+
+    if (!userId) {
+      res.status(401).json({
+        message: "Unauthorized",
+      });
+      return;
+    }
+
+    // Include the creator in the participants array
+    const uniqueParticipants = Array.from(
+      new Set([userId.toString(), ...parsedParticipants.map((id: any) => id.toString())])
+    );
+
+    let groupPic = undefined;
+    if (req.file) {
+      groupPic = {
+        url: req.file.path,
+        publicId: req.file.filename,
+      };
+    }
+
+    const newGroup = await Chat.create({
+      users: uniqueParticipants,
+      isGroup: true,
+      groupName: groupName.trim(),
+      groupDescription: groupDescription ? groupDescription.trim() : "",
+      groupAdmin: userId.toString(),
+      groupPic,
+    });
+
+    // Notify all participants
+    uniqueParticipants.forEach((pId) => {
+      const pSocketId = getRecieverSocketId(pId);
+      if (pSocketId) {
+        io.to(pSocketId).emit("newGroupCreated", newGroup);
+      }
+    });
+
+    res.status(201).json({
+      message: "Group Chat created successfully",
+      chatId: newGroup._id,
+      chat: newGroup,
+    });
+  }
+);
+
+export const getChatDetails = TryCatch(
+  async (req: AuthenticatedRequest, res) => {
+    const userId = req.user?._id;
+    const { chatId } = req.params;
+
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const chat = await Chat.findById(chatId);
+    if (!chat) {
+      res.status(404).json({ message: "Chat not found" });
+      return;
+    }
+
+    const isUserInChat = chat.users.some(
+      (id) => id.toString() === userId.toString()
+    );
+
+    if (!isUserInChat) {
+      res.status(403).json({ message: "You are not a participant of this chat" });
+      return;
+    }
+
+    // Fetch details for all users in the chat
+    const membersData = await Promise.all(
+      chat.users.map(async (memberId) => {
+        try {
+          const userData = await fetchUserWithCache(memberId);
+          return userData;
+        } catch (error) {
+          return { _id: memberId, name: "Unknown User" };
+        }
+      })
+    );
+
+    res.json({
+      chat,
+      members: membersData,
     });
   }
 );

@@ -1,11 +1,12 @@
 import { Message } from "@/app/chat/page";
-import { User } from "@/context/AppContext";
+import { User, useAppData } from "@/context/AppContext";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import moment from "moment";
 import { Check, CheckCheck, Clock, Pencil, Trash2, X, MessageCircle } from "lucide-react";
 
 interface ChatMessagesProps {
   selectedUser: string | null;
+  user: User | null;
   messages: Message[] | null;
   loggedInUser: User | null;
   onDeleteMessage: (messageId: string) => void;
@@ -14,11 +15,13 @@ interface ChatMessagesProps {
 
 const ChatMessages = ({
   selectedUser,
+  user,
   messages,
   loggedInUser,
   onDeleteMessage,
   onEditMessage,
 }: ChatMessagesProps) => {
+  const { users } = useAppData();
   const bottomRef = useRef<HTMLDivElement>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState<string>("");
@@ -57,6 +60,8 @@ const ChatMessages = ({
           {uniqueMessages.map((e, i) => {
             const isSentByMe = e.sender === loggedInUser?._id;
             const uniqueKey = `${e._id}-${i}`;
+            const senderUser = users?.find((u) => u._id === e.sender);
+            const senderName = senderUser ? senderUser.name : "Unknown User";
 
             return (
               <div
@@ -104,6 +109,11 @@ const ChatMessages = ({
                       </div>
                     ) : (
                       <div className={`relative ${e.messageType === "image" && e.image ? "p-1 pb-6" : "p-3 pb-6 pr-12"}`}>
+                        {!isSentByMe && user?.isGroup && (
+                          <div className="text-[10px] font-bold text-green-400 mb-1 leading-none">
+                            {senderName}
+                          </div>
+                        )}
                         {e.messageType === "image" && e.image && (
                           <div className="relative group overflow-hidden rounded-lg">
                             <img
