@@ -525,6 +525,17 @@ export const getMessagesByChat = TryCatch(
     const messages = await Messages.find({ chatId }).sort({ createdAt: 1 });
 
     if (chat.isGroup) {
+      const participantsData = await Promise.all(
+        chat.users.map(async (pId) => {
+          try {
+            const uData = await fetchUserWithCache(pId.toString());
+            return uData || { _id: pId.toString(), name: "Unknown User" };
+          } catch (err) {
+            return { _id: pId.toString(), name: "Unknown User" };
+          }
+        })
+      );
+
       res.json({
         messages,
         user: {
@@ -534,6 +545,8 @@ export const getMessagesByChat = TryCatch(
           email: "",
           about: chat.groupDescription || "Group conversation",
           isGroup: true,
+          groupAdmin: chat.groupAdmin || "",
+          participants: participantsData,
         },
       });
       return;

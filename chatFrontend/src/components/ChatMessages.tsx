@@ -60,8 +60,8 @@ const ChatMessages = ({
           {uniqueMessages.map((e, i) => {
             const isSentByMe = e.sender === loggedInUser?._id;
             const uniqueKey = `${e._id}-${i}`;
-            const senderUser = users?.find((u) => u._id === e.sender);
-            const senderName = senderUser ? senderUser.name : "Unknown User";
+            const senderUser = user?.participants?.find((u) => u._id === e.sender) || users?.find((u) => u._id === e.sender);
+            const senderName = e.sender === loggedInUser?._id ? "You" : (senderUser ? senderUser.name : "Unknown User");
 
             return (
               <div

@@ -163,6 +163,49 @@ const ChatApp = () => {
             </div>
           </div>
 
+          {user.isGroup && (
+            <div className="border-t border-gray-700 pt-6">
+              <h4 className="text-sm font-semibold text-gray-400 mb-3">
+                Participants ({user.participants?.length || 0})
+              </h4>
+              <div className="flex flex-col gap-3 max-h-64 overflow-y-auto custom-scroll pr-1">
+                {user.participants?.map((participant) => {
+                  const isAdmin = participant._id === user.groupAdmin;
+                  return (
+                    <div key={participant._id} className="flex items-center justify-between bg-gray-900/30 p-2 rounded-lg border border-gray-800/85">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center overflow-hidden border border-gray-700">
+                          {participant.profilePic?.url ? (
+                            <img
+                              src={participant.profilePic.url}
+                              alt={participant.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <UserCircle className="w-5 h-5 text-gray-400" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-white truncate max-w-[140px]">
+                            {participant.name}
+                          </p>
+                          <p className="text-[10px] text-gray-500 truncate max-w-[140px]">
+                            {participant.about || "No status"}
+                          </p>
+                        </div>
+                      </div>
+                      {isAdmin && (
+                        <span className="text-[9px] font-bold text-green-400 bg-green-950/40 px-2 py-0.5 rounded border border-green-800/50 flex-shrink-0">
+                          Admin
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="border-t border-gray-700 pt-6">
             <h4 className="text-sm font-semibold text-gray-400 mb-2">Media, Links & Docs</h4>
             {sharedMedia.length > 0 ? (
