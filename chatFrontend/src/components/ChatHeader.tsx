@@ -35,7 +35,7 @@ const ChatHeader = ({
       {/* mobile menu toggle */}
       <div className="sm:hidden fixed top-4 right-4 z-30">
         <button
-          className="p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
+          className="p-2.5 bg-[#202c33] rounded-full hover:bg-[#2a3942] transition-colors border border-gray-700/50"
           onClick={() => setSidebarOpen(true)}
         >
           <Menu className="w-5 h-5 text-gray-200" />
@@ -43,17 +43,17 @@ const ChatHeader = ({
       </div>
 
       {/* chat header */}
-      <div className="mb-6 bg-gray-800 rounded-lg border border-gray-700 p-6">
+      <div className="w-full bg-[#202c33] border-b border-[#2a3942] px-6 py-3 flex-shrink-0 z-20 shadow-sm">
         <div className="flex items-center justify-between gap-4">
           {user ? (
             <>
               <div 
                 onClick={onHeaderClick}
-                className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer hover:bg-gray-700/40 p-2 -m-2 rounded-lg transition-all"
+                className="flex items-center gap-3.5 flex-1 min-w-0 cursor-pointer hover:bg-[#2a3942]/30 p-1.5 -m-1.5 rounded-lg transition-all"
               >
                 <div className="relative flex-shrink-0">
                   <div
-                    className="w-14 h-14 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border border-gray-600"
+                    className="w-10.5 h-10.5 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border border-gray-650"
                   >
                     {user.profilePic?.url ? (
                       <img
@@ -62,12 +62,12 @@ const ChatHeader = ({
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <UserCircle className="w-8 h-8 text-gray-300" />
+                      <UserCircle className="w-6 h-6 text-gray-300" />
                     )}
                   </div>
                   {/* online user setup */}
                   {isOnlineUser && (
-                    <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-green-500 border-2 border-gray-800">
+                    <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-green-500 border border-[#202c33]">
                       <span className="absolute inset-0 rounded-full bg-green-500 animate-ping opacity-75"></span>
                     </span>
                   )}
@@ -75,77 +75,68 @@ const ChatHeader = ({
 
                 {/* user info */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 mb-1">
-                    <h2 className="text-2xl font-bold text-white truncate">
-                      {user.name}
-                    </h2>
-                  </div>
+                  <h2 className="text-base font-semibold text-white truncate leading-tight">
+                    {user.name}
+                  </h2>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 mt-0.5">
                     {isTyping ? (
-                      <div className="flex items-center gap-2 text-sm">
-                        <div className="flex gap-1">
-                          <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"></div>
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <div className="flex gap-0.5">
+                          <div className="w-1 h-1 bg-green-400 rounded-full animate-bounce"></div>
                           <div
-                            className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"
+                            className="w-1 h-1 bg-green-400 rounded-full animate-bounce"
                             style={{ animationDelay: "0.1s" }}
                           ></div>
                           <div
-                            className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"
+                            className="w-1 h-1 bg-green-400 rounded-full animate-bounce"
                             style={{ animationDelay: "0.2s" }}
                           ></div>
                         </div>
-                        <span className="text-blue-500 font-medium">
+                        <span className="text-green-400 font-medium">
                           typing...
                         </span>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={`w-2 h-2 rounded-full ${
-                            isOnlineUser ? "bg-green-500" : "bg-gray-500"
-                          }`}
-                        ></div>
-                        <span
-                          className={`text-sm font-medium ${
-                            isOnlineUser ? "text-green-500" : "text-gray-400"
-                          }`}
-                        >
-                          {isOnlineUser ? (
-                            "Online"
+                      <span
+                        className={`text-xs font-medium ${
+                          isOnlineUser ? "text-green-400" : "text-gray-400"
+                        }`}
+                      >
+                        {isOnlineUser ? (
+                          "Online"
+                        ) : (
+                          user.showLastSeen !== false && user.lastSeen ? (
+                            `Last seen ${moment(user.lastSeen).fromNow()}`
                           ) : (
-                            user.showLastSeen !== false && user.lastSeen ? (
-                              `Last seen ${moment(user.lastSeen).fromNow()}`
-                            ) : (
-                              "Offline"
-                            )
-                          )}
-                        </span>
-                      </div>
+                            "Offline"
+                          )
+                        )}
+                      </span>
                     )}
                   </div>
                 </div>
               </div>
 
               {/* call action buttons */}
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => callUser(user._id, "voice")}
-                  className="p-3 bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white rounded-full transition-all hover:scale-105 active:scale-95 border border-gray-600/50"
+                  className="p-2 hover:bg-[#2a3942]/60 text-gray-300 hover:text-white rounded-full transition-colors"
                   title="Voice Call"
                 >
                   <Phone className="w-5 h-5" />
                 </button>
                 <button
                   onClick={() => callUser(user._id, "video")}
-                  className="p-3 bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white rounded-full transition-all hover:scale-105 active:scale-95 border border-gray-600/50"
+                  className="p-2 hover:bg-[#2a3942]/60 text-gray-300 hover:text-white rounded-full transition-colors"
                   title="Video Call"
                 >
                   <Video className="w-5 h-5" />
                 </button>
                 <button
                   onClick={handleConfirmDelete}
-                  className="p-3 bg-gray-700 hover:bg-red-600/80 text-gray-300 hover:text-white rounded-full transition-all hover:scale-105 active:scale-95 border border-gray-600/50"
+                  className="p-2 hover:bg-red-950/40 hover:text-red-400 text-gray-400 rounded-full transition-colors"
                   title="Delete Chat"
                 >
                   <Trash2 className="w-5 h-5" />
@@ -153,17 +144,14 @@ const ChatHeader = ({
               </div>
             </>
           ) : (
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-gray-700 flex items-center justify-center">
-                <UserCircle className="w-8 h-8 text-gray-300" />
+            <div className="flex items-center gap-3">
+              <div className="w-10.5 h-10.5 rounded-full bg-gray-800 flex items-center justify-center">
+                <UserCircle className="w-6 h-6 text-gray-400" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-400">
+                <h2 className="text-base font-semibold text-gray-400">
                   Select a conversation
                 </h2>
-                <p className="text-sm text-gray-500 mt-1">
-                  Choose a chat from the sidebar to start messaging
-                </p>
               </div>
             </div>
           )}

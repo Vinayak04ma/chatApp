@@ -49,7 +49,7 @@ const ChatApp = () => {
 
   if (loading) return <Loading />;
   return (
-    <div className="min-h-screen flex bg-gray-900 text-white relative overflow-hidden">
+    <div className="h-screen flex bg-[#0b141a] text-white relative overflow-hidden">
       <ChatSidebar
         sidebarOpen={siderbarOpen}
         setSidebarOpen={setSiderbarOpen}
@@ -64,44 +64,49 @@ const ChatApp = () => {
         createChat={createChat}
         onlineUsers={onlineUsers}
       />
-      <div className="flex-1 flex flex-col justify-between p-4 backdrop-blur-xl bg-white/5 border-1 border-white/10">
-        <ChatHeader
-          user={user}
-          setSidebarOpen={setSiderbarOpen}
-          isTyping={isTyping}
-          onlineUsers={onlineUsers}
-          onHeaderClick={() => setProfilePanelOpen(!profilePanelOpen)}
-          onDeleteChat={() => handleDeleteChat(selectedUser!)}
-        />
+      <div className="flex-1 flex flex-col h-full bg-[#0b141a] relative">
+        {/* Subtle WhatsApp-like background pattern */}
+        <div className="absolute inset-0 opacity-[0.04] pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:20px_20px]"></div>
+        
+        <div className="relative flex-1 flex flex-col h-full z-10 overflow-hidden">
+          <ChatHeader
+            user={user}
+            setSidebarOpen={setSiderbarOpen}
+            isTyping={isTyping}
+            onlineUsers={onlineUsers}
+            onHeaderClick={() => setProfilePanelOpen(!profilePanelOpen)}
+            onDeleteChat={() => handleDeleteChat(selectedUser!)}
+          />
 
-        <ChatMessages
-          selectedUser={selectedUser}
-          messages={messages}
-          loggedInUser={loggedInUser}
-          onDeleteMessage={handleDeleteMessage}
-          onEditMessage={handleEditMessage}
-        />
+          <ChatMessages
+            selectedUser={selectedUser}
+            messages={messages}
+            loggedInUser={loggedInUser}
+            onDeleteMessage={handleDeleteMessage}
+            onEditMessage={handleEditMessage}
+          />
 
-        <MessageInput
-          selectedUser={selectedUser}
-          message={message}
-          setMessage={handleTyping}
-          handleMessageSend={handleMessageSend}
-        />
+          <MessageInput
+            selectedUser={selectedUser}
+            message={message}
+            setMessage={handleTyping}
+            handleMessageSend={handleMessageSend}
+          />
+        </div>
       </div>
 
       {/* WhatsApp-style Profile Info Sidebar */}
       {profilePanelOpen && user && (
-        <div className="w-80 h-screen overflow-y-auto bg-gray-800 border-l border-gray-700 p-6 flex flex-col gap-6 relative animate-in slide-in-from-right duration-300 z-40 custom-scroll pb-10">
+        <div className="w-80 h-screen overflow-y-auto bg-[#111b21] border-l border-gray-800 p-6 flex flex-col gap-6 relative animate-in slide-in-from-right duration-300 z-40 custom-scroll pb-10">
           <button 
             onClick={() => setProfilePanelOpen(false)}
-            className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-700/50 transition-colors"
+            className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-800/50 transition-colors"
           >
             <X className="w-6 h-6" />
           </button>
           
           <div className="flex flex-col items-center gap-4 text-center mt-8">
-            <div className="w-24 h-24 rounded-full bg-gray-700 flex items-center justify-center border-2 border-gray-600 shadow-lg overflow-hidden">
+            <div className="w-24 h-24 rounded-full bg-gray-800 flex items-center justify-center border-2 border-gray-700 shadow-lg overflow-hidden">
               {user.profilePic?.url ? (
                 <img
                   src={user.profilePic.url}

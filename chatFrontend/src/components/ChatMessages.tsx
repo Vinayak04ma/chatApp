@@ -2,7 +2,7 @@ import { Message } from "@/app/chat/page";
 import { User } from "@/context/AppContext";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import moment from "moment";
-import { Check, CheckCheck, Clock, Pencil, Trash2, X } from "lucide-react";
+import { Check, CheckCheck, Clock, Pencil, Trash2, X, MessageCircle } from "lucide-react";
 
 interface ChatMessagesProps {
   selectedUser: string | null;
@@ -39,151 +39,155 @@ const ChatMessages = ({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [selectedUser, uniqueMessages]);
+
   return (
-    <div className="flex-1 overflow-hidden">
-      <div className="h-full max-h-[calc(100vh-215px)] overflow-y-auto p-2 space-y-2 custom-scroll">
-        {!selectedUser ? (
-          <p className="text-gray-400 text-center mt-20">
-            Please select a user to start chatting 📩
+    <div className="flex-1 flex flex-col min-h-0 overflow-y-auto px-6 py-4 space-y-3 custom-scroll">
+      {!selectedUser ? (
+        <div className="flex-1 flex flex-col items-center justify-center text-center p-8 mt-20 select-none">
+          <div className="p-4 bg-[#202c33] rounded-full mb-4">
+            <MessageCircle className="w-12 h-12 text-green-400" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-200">Chatify</h3>
+          <p className="text-xs text-gray-500 mt-2 max-w-xs leading-relaxed">
+            Select a conversation to start messaging. Send texts, voice notes, or photos in real-time.
           </p>
-        ) : (
-          <>
-             {uniqueMessages.map((e, i) => {
-              const isSentByMe = e.sender === loggedInUser?._id;
-              const uniqueKey = `${e._id}-${i}`;
+        </div>
+      ) : (
+        <>
+          {uniqueMessages.map((e, i) => {
+            const isSentByMe = e.sender === loggedInUser?._id;
+            const uniqueKey = `${e._id}-${i}`;
 
-              return (
-                <div
-                  className={`flex flex-col gap-1 mt-2 ${
-                    isSentByMe ? "items-end" : "items-start"
-                  }`}
-                  key={uniqueKey}
-                >
-                  <div className={`flex items-center gap-2 group max-w-sm ${isSentByMe ? "flex-row-reverse" : "flex-row"}`}>
-                    <div
-                      className={`rounded-lg p-3 transition-opacity duration-300 relative ${
-                        isSentByMe
-                          ? "bg-blue-600 text-white"
-                          : "bg-gray-700 text-white"
-                      } ${e.isSending ? "opacity-60" : ""}`}
-                    >
-                      {editingMessageId === e._id ? (
-                        <div className="flex flex-col gap-2 min-w-[200px]">
-                          <textarea
-                            value={editingText}
-                            onChange={(event) => setEditingText(event.target.value)}
-                            className="bg-gray-800 text-white p-2 rounded border border-gray-600 focus:outline-none focus:border-blue-500 text-sm resize-none w-full"
-                            rows={2}
-                            autoFocus
-                          />
-                          <div className="flex justify-end gap-2">
-                            <button
-                              onClick={() => setEditingMessageId(null)}
-                              className="p-1 hover:bg-gray-600 rounded text-red-400 transition-colors"
-                              title="Cancel"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                onEditMessage(e._id, editingText);
-                                setEditingMessageId(null);
-                              }}
-                              className="p-1 hover:bg-gray-600 rounded text-green-400 transition-colors"
-                              title="Save"
-                            >
-                              <Check className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          {e.messageType === "image" && e.image && (
-                            <div className="relative group">
-                              <img
-                                src={e.image.url}
-                                alt="shared image"
-                                className="max-w-full h-auto rounded-lg"
-                              />
-                            </div>
-                          )}
-
-                          {e.messageType === "audio" && e.audio && (
-                            <div className="relative group min-w-[240px] py-1">
-                              <audio
-                                src={e.audio.url}
-                                controls
-                                className="max-w-full h-9 rounded filter invert opacity-90"
-                              />
-                            </div>
-                          )}
-
-                          {e.text && <p className="mt-1">{e.text}</p>}
-                        </>
-                      )}
-                    </div>
-
-                    {/* Action buttons on hover */}
-                    {isSentByMe && !e.isSending && editingMessageId !== e._id && (
-                      <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 transition-opacity duration-200">
-                        {e.messageType === "text" && (
+            return (
+              <div
+                className={`flex flex-col gap-1 mt-1.5 ${
+                  isSentByMe ? "items-end" : "items-start"
+                }`}
+                key={uniqueKey}
+              >
+                <div className={`flex items-end gap-2 group max-w-[80%] sm:max-w-[70%] ${isSentByMe ? "flex-row-reverse" : "flex-row"}`}>
+                  <div
+                    className={`rounded-2xl transition-opacity duration-300 relative ${
+                      isSentByMe
+                        ? "bg-[#005c4b] text-gray-100 rounded-tr-none"
+                        : "bg-[#202c33] text-gray-100 rounded-tl-none"
+                    } ${e.isSending ? "opacity-60" : ""}`}
+                  >
+                    {editingMessageId === e._id ? (
+                      <div className="flex flex-col gap-2 min-w-[220px] p-3">
+                        <textarea
+                          value={editingText}
+                          onChange={(event) => setEditingText(event.target.value)}
+                          className="bg-[#111b21] text-white p-2 rounded border border-gray-700 focus:outline-none focus:border-green-500 text-sm resize-none w-full"
+                          rows={2}
+                          autoFocus
+                        />
+                        <div className="flex justify-end gap-1.5">
+                          <button
+                            onClick={() => setEditingMessageId(null)}
+                            className="p-1 hover:bg-[#202c33] rounded text-red-400 transition-colors"
+                            title="Cancel"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={() => {
-                              setEditingMessageId(e._id);
-                              setEditingText(e.text || "");
+                              onEditMessage(e._id, editingText);
+                              setEditingMessageId(null);
                             }}
-                            className="p-1 hover:bg-gray-800 rounded text-gray-400 hover:text-blue-400 transition-colors border border-gray-700 bg-gray-900/60"
-                            title="Edit message"
+                            className="p-1 hover:bg-[#202c33] rounded text-green-400 transition-colors"
+                            title="Save"
                           >
-                            <Pencil className="w-3.5 h-3.5" />
+                            <Check className="w-4 h-4" />
                           </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={`relative ${e.messageType === "image" && e.image ? "p-1 pb-6" : "p-3 pb-6 pr-12"}`}>
+                        {e.messageType === "image" && e.image && (
+                          <div className="relative group overflow-hidden rounded-lg">
+                            <img
+                              src={e.image.url}
+                              alt="shared image"
+                              className="max-w-xs sm:max-w-sm h-auto rounded-lg object-cover"
+                            />
+                          </div>
                         )}
+
+                        {e.messageType === "audio" && e.audio && (
+                          <div className="relative group min-w-[240px] py-1 pr-6">
+                            <audio
+                              src={e.audio.url}
+                              controls
+                              className="max-w-full h-9 rounded filter invert opacity-90"
+                            />
+                          </div>
+                        )}
+
+                        {e.text && (
+                          <p className="text-sm whitespace-pre-wrap break-words leading-relaxed select-text mt-0.5">
+                            {e.text}
+                          </p>
+                        )}
+
+                        {/* Floating bottom metadata */}
+                        <div className={`absolute bottom-1 right-2 flex items-center gap-1 text-[10px] select-none ${
+                          e.messageType === "image" && e.image
+                            ? "bg-black/50 text-gray-300 px-1.5 py-0.5 rounded-full"
+                            : "text-gray-400"
+                        }`}>
+                          <span>{moment(e.createdAt).format("hh:mm A")}</span>
+                          {isSentByMe && (
+                            <span className="flex items-center">
+                              {e.isSending ? (
+                                <Clock className="w-3 h-3 text-gray-400 animate-pulse" />
+                              ) : e.seen ? (
+                                <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb]" />
+                              ) : (
+                                <Check className="w-3.5 h-3.5 text-gray-400" />
+                              )}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action buttons on hover */}
+                  {isSentByMe && !e.isSending && editingMessageId !== e._id && (
+                    <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity duration-200 self-center">
+                      {e.messageType === "text" && (
                         <button
                           onClick={() => {
-                            if (confirm("Delete this message?")) {
-                              onDeleteMessage(e._id);
-                            }
+                            setEditingMessageId(e._id);
+                            setEditingText(e.text || "");
                           }}
-                          className="p-1 hover:bg-gray-800 rounded text-gray-400 hover:text-red-400 transition-colors border border-gray-700 bg-gray-900/60"
-                          title="Delete message"
+                          className="p-1.5 hover:bg-[#202c33] rounded-full text-gray-400 hover:text-green-400 transition-colors bg-[#111b21]/80 border border-gray-800"
+                          title="Edit message"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Pencil className="w-3.5 h-3.5" />
                         </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div
-                    className={`flex items-center gap-1 text-xs text-gray-400 ${
-                      isSentByMe ? "pr-2 flex-row-reverse" : "pl-2"
-                    }`}
-                  >
-                    <span>{moment(e.createdAt).format("hh:mm A . MMM D")}</span>
-
-                    {isSentByMe && (
-                      <div className="flex items-center ml-1">
-                        {e.isSending ? (
-                          <Clock className="w-3 h-3 text-gray-400 animate-pulse" />
-                        ) : e.seen ? (
-                          <div className="flex items-center gap-1 text-blue-400">
-                            <CheckCheck className="w-3 h-3" />
-                            {e.seenAt && (
-                              <span>{moment(e.seenAt).format("hh:mm A")}</span>
-                            )}
-                          </div>
-                        ) : (
-                          <Check className="w-3 h-3 text-gray-500" />
-                        )}
-                      </div>
-                    )}
-                  </div>
+                      )}
+                      <button
+                        onClick={() => {
+                          if (confirm("Delete this message?")) {
+                            onDeleteMessage(e._id);
+                          }
+                        }}
+                        className="p-1.5 hover:bg-[#202c33] rounded-full text-gray-400 hover:text-red-400 transition-colors bg-[#111b21]/80 border border-gray-800"
+                        title="Delete message"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
-              );
-            })}
-            <div ref={bottomRef} />
-          </>
-        )}
-      </div>
+              </div>
+            );
+          })}
+          <div ref={bottomRef} />
+        </>
+      )}
     </div>
   );
 };

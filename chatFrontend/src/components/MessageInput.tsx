@@ -111,44 +111,44 @@ const MessageInput = ({
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col gap-2 border-t border-gray-700 pt-2"
+      className="w-full bg-[#202c33] border-t border-[#2a3942] px-6 py-3 flex flex-col gap-2 flex-shrink-0 z-20 shadow-inner"
     >
       {imageFile && (
-        <div className="relative w-fit">
+        <div className="relative w-fit bg-[#111b21] p-1.5 rounded-xl border border-gray-700">
           <img
             src={URL.createObjectURL(imageFile)}
             alt="preview"
-            className="w-24 h-24 object-cover rounded-lg border border-gray-600"
+            className="w-20 h-20 object-cover rounded-lg"
           />
           <button
             type="button"
-            className="absolute -top-2 -right-2 bg-black rounded-full p-1"
+            className="absolute -top-1.5 -right-1.5 bg-[#202c33] hover:bg-[#2a3942] rounded-full p-1 border border-gray-650"
             onClick={() => setImageFile(null)}
           >
-            <X className="w-4 h-4 text-white" />
+            <X className="w-3.5 h-3.5 text-red-400" />
           </button>
         </div>
       )}
 
       {audioFile && (
-        <div className="relative flex items-center gap-3 bg-gray-800 p-2.5 rounded-lg border border-gray-600 w-fit max-w-xs">
+        <div className="relative flex items-center gap-3 bg-[#111b21] p-2.5 rounded-xl border border-gray-700 w-fit max-w-xs">
           <audio src={audioUrl} controls className="h-9 max-w-full" />
           <button
             type="button"
-            className="absolute -top-1.5 -right-1.5 bg-black rounded-full p-0.5 text-red-500 hover:text-red-400 border border-gray-600"
+            className="absolute -top-1.5 -right-1.5 bg-[#202c33] hover:bg-[#2a3942] rounded-full p-1 border border-gray-650 text-red-500 hover:text-red-400"
             onClick={() => setAudioFile(null)}
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-3 h-3" />
           </button>
         </div>
       )}
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3.5">
         {isRecording ? (
-          <div className="flex-1 flex items-center justify-between bg-gray-850 border border-red-500/30 rounded-lg px-4 py-2 text-white">
-            <div className="flex items-center gap-2">
+          <div className="flex-1 flex items-center justify-between bg-[#111b21] border border-red-500/20 rounded-lg px-4 py-2 text-white">
+            <div className="flex items-center gap-2.5">
               <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
-              <span className="text-sm font-medium text-gray-300">
+              <span className="text-xs font-semibold text-gray-300">
                 Recording {formatDuration(recordingDuration)}
               </span>
             </div>
@@ -164,17 +164,17 @@ const MessageInput = ({
               <button
                 type="button"
                 onClick={stopRecording}
-                className="bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 transition-colors animate-pulse"
+                className="bg-red-655 text-white rounded-full p-1.5 transition-colors animate-pulse bg-red-600 hover:bg-red-750"
                 title="Stop and preview"
               >
-                <Square className="w-3.5 h-3.5 fill-current" />
+                <Square className="w-3 h-3 fill-current" />
               </button>
             </div>
           </div>
         ) : (
           <>
-            <label className="cursor-pointer bg-gray-700 hover:bg-gray-600 rounded-lg px-3 py-2 transition-colors">
-              <Paperclip size={18} className="text-gray-300" />
+            <label className="cursor-pointer hover:bg-[#2a3942]/65 text-gray-400 hover:text-gray-200 rounded-full p-2 transition-colors flex items-center justify-center">
+              <Paperclip size={20} className="transform rotate-45" />
               <input
                 type="file"
                 accept="image/*"
@@ -191,13 +191,13 @@ const MessageInput = ({
 
             <input
               type="text"
-              className="flex-1 bg-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-400 disabled:opacity-50"
+              className="flex-1 bg-[#2a3942] text-sm text-gray-200 placeholder-gray-400 rounded-lg px-4 py-2.5 focus:outline-none disabled:opacity-50 border border-transparent focus:border-green-500/10"
               placeholder={
                 imageFile
                   ? "Add a caption..."
                   : audioFile
                   ? "Voice message preview..."
-                  : "Type a message..."
+                  : "Type a message"
               }
               value={message}
               disabled={isUploading || !!audioFile}
@@ -209,21 +209,21 @@ const MessageInput = ({
                 type="button"
                 onClick={startRecording}
                 disabled={isUploading}
-                className="bg-gray-700 hover:bg-gray-600 text-gray-300 p-2.5 rounded-lg transition-colors"
+                className="hover:bg-[#2a3942]/65 text-gray-400 hover:text-gray-200 p-2.5 rounded-full transition-colors flex items-center justify-center"
                 title="Record voice message"
               >
-                <Mic className="w-4 h-4" />
+                <Mic className="w-5 h-5" />
               </button>
             ) : (
               <button
                 type="submit"
                 disabled={(!imageFile && !message && !audioFile) || isUploading}
-                className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed text-white"
+                className="bg-green-600 hover:bg-green-700 text-white p-2.5 rounded-full transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
               >
                 {isUploading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
-                  <Send className="w-4 h-4" />
+                  <Send className="w-5 h-5" />
                 )}
               </button>
             )}
