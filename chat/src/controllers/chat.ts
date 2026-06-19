@@ -123,6 +123,43 @@ export const getAllChats = TryCatch(async (req: AuthenticatedRequest, res) => {
     })
   );
 
+  const hasMetaAIChat = chatWithUserData.some(c => ((c.chat as any)?._id || "").toString() === "66d0000000000000000000a1");
+  if (!hasMetaAIChat) {
+    const lastAiMessage = await Messages.findOne({ chatId: "66d0000000000000000000a1" }).sort({ createdAt: -1 });
+    chatWithUserData.unshift({
+      user: {
+        _id: "66d0000000000000000000a2",
+        name: "Meta AI",
+        username: "meta.ai",
+        about: "Meta AI assistant. Type anything to start talking!",
+        profilePic: {
+          url: "https://upload.wikimedia.org/wikipedia/commons/0/05/Meta_AI_logo.svg",
+          publicId: "",
+        },
+        email: "meta-ai@chatify.com",
+        isGroup: false,
+        showLastSeen: false,
+      },
+      chat: {
+        _id: "66d0000000000000000000a1" as any,
+        users: [userId, "66d0000000000000000000a2"] as any,
+        latestMessage: lastAiMessage ? {
+          text: lastAiMessage.text || "",
+          sender: lastAiMessage.sender.toString(),
+        } : {
+          text: "Ask Meta AI anything...",
+          sender: "66d0000000000000000000a2"
+        },
+        createdAt: new Date(),
+        updatedAt: lastAiMessage ? lastAiMessage.createdAt : new Date(0),
+        unseenCount: 0,
+      } as any
+    });
+  }
+
+  // Sort chats by updatedAt descending so Meta AI behaves dynamically like normal chats
+  chatWithUserData.sort((a, b) => new Date(b.chat.updatedAt).getTime() - new Date(a.chat.updatedAt).getTime());
+
   res.json({
     chats: chatWithUserData,
   });
@@ -155,7 +192,84 @@ export const sendMessage = TryCatch(async (req: AuthenticatedRequest, res) => {
     return;
   }
 
-  const chat = await Chat.findById(chatId);
+  let chat;
+  if (chatId === "66d0000000000000000000a1") {
+    // Save user's message
+    const userMessage = await Messages.create({
+      chatId,
+      sender: senderId,
+      text: text || "Sent media",
+      messageType: "text",
+      seen: true,
+      seenAt: new Date()
+    });
+
+    res.status(201).json({
+      message: userMessage,
+    });
+
+    // Handle AI chatbot response in background
+    (async () => {
+      const userSocket = getRecieverSocketId(senderId.toString());
+      if (userSocket) {
+        io.to(userSocket).emit("userTyping", {
+          chatId: "66d0000000000000000000a1",
+          userId: "66d0000000000000000000a2",
+        });
+      }
+
+      // Add a slight delay to simulate typing human feel
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      let aiResponseText = "";
+      const geminiKey = process.env.GEMINI_API_KEY;
+
+      if (geminiKey) {
+        try {
+          const previousMessages = await Messages.find({ chatId: "66d0000000000000000000a1" })
+            .sort({ createdAt: 1 })
+            .limit(10);
+
+          const contents = previousMessages.map(msg => ({
+            role: msg.sender.toString() === senderId.toString() ? "user" : "model",
+            parts: [{ text: msg.text || "" }]
+          }));
+
+          const response = await axios.post(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+            { contents }
+          );
+
+          aiResponseText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't generate a response.";
+        } catch (error) {
+          console.error("Gemini API error:", error);
+          aiResponseText = "I encountered an error while processing your request. Please try again.";
+        }
+      } else {
+        aiResponseText = `Hello! I'm Meta AI. I received your message: "${text || "media"}".\n\nTo activate my full AI brain, please add the \`GEMINI_API_KEY\` to your \`chat/.env\` file. You can grab a free key in 10 seconds from Google AI Studio.`;
+      }
+
+      const aiMessage = await Messages.create({
+        chatId: "66d0000000000000000000a1",
+        sender: "66d0000000000000000000a2",
+        text: aiResponseText,
+        messageType: "text",
+        seen: true,
+        seenAt: new Date()
+      });
+
+      if (userSocket) {
+        io.to(userSocket).emit("userStoppedTyping", {
+          chatId: "66d0000000000000000000a1",
+          userId: "66d0000000000000000000a2",
+        });
+        io.to(userSocket).emit("newMessage", aiMessage);
+      }
+    })();
+    return;
+  }
+
+  chat = await Chat.findById(chatId);
 
   if (!chat) {
     res.status(404).json({
@@ -297,6 +411,56 @@ export const getMessagesByChat = TryCatch(
     if (!chatId) {
       res.status(400).json({
         message: "ChatId Required",
+      });
+      return;
+    }
+
+    if (chatId === "66d0000000000000000000a1") {
+      const messages = await Messages.find({ chatId }).sort({ createdAt: 1 });
+      if (messages.length === 0) {
+        const welcomeMessage = {
+          _id: "66d0000000000000000000a3",
+          chatId: "66d0000000000000000000a1",
+          sender: "66d0000000000000000000a2",
+          text: "Hello! I'm Meta AI. How can I help you today? You can ask me any questions or type a prompt to get started!",
+          messageType: "text",
+          seen: true,
+          createdAt: new Date().toISOString(),
+        };
+        res.json({
+          messages: [welcomeMessage],
+          user: {
+            _id: "66d0000000000000000000a2",
+            name: "Meta AI",
+            username: "meta.ai",
+            about: "Meta AI assistant. Type anything to start talking!",
+            profilePic: {
+              url: "https://upload.wikimedia.org/wikipedia/commons/0/05/Meta_AI_logo.svg",
+              publicId: "",
+            },
+            email: "meta-ai@chatify.com",
+            isGroup: false,
+            showLastSeen: false,
+          },
+        });
+        return;
+      }
+
+      res.json({
+        messages,
+        user: {
+          _id: "66d0000000000000000000a2",
+          name: "Meta AI",
+          username: "meta.ai",
+          about: "Meta AI assistant. Type anything to start talking!",
+          profilePic: {
+            url: "https://upload.wikimedia.org/wikipedia/commons/0/05/Meta_AI_logo.svg",
+            publicId: "",
+          },
+          email: "meta-ai@chatify.com",
+          isGroup: false,
+          showLastSeen: false,
+        },
       });
       return;
     }
@@ -557,6 +721,14 @@ export const deleteChat = TryCatch(
     if (!userId) {
       res.status(401).json({
         message: "Unauthorized",
+      });
+      return;
+    }
+
+    if (chatId === "66d0000000000000000000a1") {
+      await Messages.deleteMany({ chatId });
+      res.json({
+        message: "Chat deleted successfully",
       });
       return;
     }

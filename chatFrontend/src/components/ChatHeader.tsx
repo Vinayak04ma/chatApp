@@ -102,10 +102,12 @@ const ChatHeader = ({
                     ) : (
                       <span
                         className={`text-xs font-medium ${
-                          isOnlineUser ? "text-green-400" : "text-gray-400"
+                          isOnlineUser || user._id === "66d0000000000000000000a2" ? "text-green-400" : "text-gray-400"
                         }`}
                       >
-                        {user.isGroup ? (
+                        {user._id === "66d0000000000000000000a2" ? (
+                          "Online"
+                        ) : user.isGroup ? (
                           user.about || "Group Conversation"
                         ) : isOnlineUser ? (
                           "Online"
@@ -124,7 +126,7 @@ const ChatHeader = ({
 
               {/* call action buttons */}
               <div className="flex items-center gap-1.5">
-                {!user.isGroup && (
+                {!user.isGroup && user._id !== "66d0000000000000000000a2" && (
                   <>
                     <button
                       onClick={() => callUser(user._id, "voice")}

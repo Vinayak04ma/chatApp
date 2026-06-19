@@ -7,6 +7,7 @@
 ## 🚀 Key Features
 
 *   💬 **Real-time Chatting & Private Groups:** Low-latency text messaging powered by WebSockets (Socket.IO). Supports 1-on-1 private messaging and multi-user **Private Group Chats** complete with custom group names, descriptions, and avatars.
+*   🤖 **Meta AI Chatbot:** Built-in AI assistant inspired by WhatsApp's Meta AI. It pins at the top of the chat list, supports real-time typing simulation, memory-aware contextual conversation history, and interfaces directly with Google's free-tier Gemini API.
 *   🎙️ **Voice Messaging Support:** Record, preview, and play back voice notes. Voice recordings are uploaded to Cloudinary asynchronously, leveraging an **Optimistic UI Update** model for instant client-side rendering.
 *   📞 **P2P Voice & Video Calling:** Peer-to-peer audio and video calls established via **WebRTC** (`RTCPeerConnection` with Google STUN servers) utilizing socket-based signaling (automatically hidden for group chats).
 *   ⚡ **Optimistic UI Updates:** Messages immediately appear in the feed with a loading indicator (pulsing clock icon) and lower opacity while uploads/saves complete in the background.
@@ -76,6 +77,9 @@ USER_SERVICE=http://localhost:5001
 Cloud_Name="your_cloudinary_name"
 Api_Key="your_cloudinary_api_key"
 Api_Secret="your_cloudinary_api_secret"
+
+# Gemini AI Key (Free AI Chatbot)
+GEMINI_API_KEY="your_gemini_api_key"
 ```
 
 ### Mail Service (`mail/.env`)

@@ -130,29 +130,31 @@ const ChatApp = () => {
             </div>
           </div>
           
-          <div className="border-t border-gray-700 pt-6">
-            <h4 className="text-sm font-semibold text-gray-400 mb-4">Call Options</h4>
-            <div className="flex justify-around">
-              <button 
-                onClick={() => callUser(user._id, "voice")}
-                className="flex flex-col items-center gap-2 text-gray-300 hover:text-white group"
-              >
-                <div className="p-3 bg-gray-700 hover:bg-gray-600 rounded-full transition-transform group-hover:scale-110">
-                  <Phone className="w-5 h-5" />
-                </div>
-                <span className="text-xs">Voice</span>
-              </button>
-              <button 
-                onClick={() => callUser(user._id, "video")}
-                className="flex flex-col items-center gap-2 text-gray-300 hover:text-white group"
-              >
-                <div className="p-3 bg-gray-700 hover:bg-gray-600 rounded-full transition-transform group-hover:scale-110">
-                  <Video className="w-5 h-5" />
-                </div>
-                <span className="text-xs">Video</span>
-              </button>
+          {user._id !== "66d0000000000000000000a2" && (
+            <div className="border-t border-gray-700 pt-6">
+              <h4 className="text-sm font-semibold text-gray-400 mb-4">Call Options</h4>
+              <div className="flex justify-around">
+                <button 
+                  onClick={() => callUser(user._id, "voice")}
+                  className="flex flex-col items-center gap-2 text-gray-300 hover:text-white group"
+                >
+                  <div className="p-3 bg-gray-700 hover:bg-gray-600 rounded-full transition-transform group-hover:scale-110">
+                    <Phone className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs">Voice</span>
+                </button>
+                <button 
+                  onClick={() => callUser(user._id, "video")}
+                  className="flex flex-col items-center gap-2 text-gray-300 hover:text-white group"
+                >
+                  <div className="p-3 bg-gray-700 hover:bg-gray-600 rounded-full transition-transform group-hover:scale-110">
+                    <Video className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs">Video</span>
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="border-t border-gray-700 pt-6">
             <h4 className="text-sm font-semibold text-gray-400 mb-2">About</h4>
