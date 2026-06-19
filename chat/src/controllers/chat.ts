@@ -230,10 +230,29 @@ export const sendMessage = TryCatch(async (req: AuthenticatedRequest, res) => {
             .sort({ createdAt: 1 })
             .limit(10);
 
-          const contents = previousMessages.map(msg => ({
-            role: msg.sender.toString() === senderId.toString() ? "user" : "model",
-            parts: [{ text: msg.text || "" }]
-          }));
+          const contents: { role: string; parts: { text: string }[] }[] = [];
+          for (const msg of previousMessages) {
+            const role = msg.sender.toString() === senderId.toString() ? "user" : "model";
+            if (contents.length > 0 && contents[contents.length - 1].role === role) {
+              contents[contents.length - 1].parts[0].text += "\n" + (msg.text || "");
+            } else {
+              contents.push({
+                role,
+                parts: [{ text: msg.text || "" }]
+              });
+            }
+          }
+
+          while (contents.length > 0 && contents[0].role !== "user") {
+            contents.shift();
+          }
+
+          if (contents.length === 0) {
+            contents.push({
+              role: "user",
+              parts: [{ text: text || "Hello" }]
+            });
+          }
 
           const response = await axios.post(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,

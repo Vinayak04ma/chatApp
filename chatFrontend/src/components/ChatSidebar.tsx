@@ -15,6 +15,7 @@ import {
   Check,
   Pencil,
   Plus,
+  Sparkles,
 } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import Cookies from "js-cookie";
@@ -392,6 +393,25 @@ const ChatSidebar = ({
               title="Profile Settings"
             >
               <Settings className="w-5.5 h-5.5" />
+            </button>
+
+            {/* Meta AI Quick Access button */}
+            <button
+              onClick={() => {
+                setSelectedUser("66d0000000000000000000a1");
+                handleTabChange('chats');
+              }}
+              className={`p-2.5 rounded-xl transition-all relative group ${
+                selectedUser === "66d0000000000000000000a1" && activeTab === 'chats'
+                  ? "bg-[#2a3942] text-blue-400"
+                  : "text-gray-400 hover:text-blue-300 hover:bg-[#2a3942]/50"
+              }`}
+              title="Meta AI"
+            >
+              <Sparkles className="w-5.5 h-5.5 text-blue-400 animate-pulse" />
+              <span className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-xs text-white rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+                Meta AI
+              </span>
             </button>
           </div>
         </div>
