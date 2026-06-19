@@ -30,6 +30,10 @@ io.on("connection", (socket: Socket) => {
   if (userId && userId !== "undefined") {
     userSocketMap[userId] = socket.id;
     console.log(`User ${userId} mapped to socket ${socket.id}`);
+    io.emit("userStatusChanged", {
+      userId,
+      isOnline: true,
+    });
   }
 
   io.emit("getOnlineUser", Object.keys(userSocketMap));
@@ -140,6 +144,13 @@ io.on("connection", (socket: Socket) => {
       delete userSocketMap[userId];
       console.log(`User ${userId} removed from online users`);
       io.emit("getOnlineUser", Object.keys(userSocketMap));
+
+      const lastSeenTime = new Date();
+      io.emit("userStatusChanged", {
+        userId,
+        isOnline: false,
+        lastSeen: lastSeenTime.toISOString(),
+      });
 
       // Update lastSeen in user service
       try {

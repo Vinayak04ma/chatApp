@@ -405,6 +405,19 @@ export function useChatState() {
       fetchChats();
     });
 
+    socket?.on("userStatusChanged", (data) => {
+      console.log("User status changed:", data);
+      setUser((prev) => {
+        if (prev && prev._id === data.userId) {
+          return {
+            ...prev,
+            lastSeen: data.isOnline ? undefined : data.lastSeen,
+          };
+        }
+        return prev;
+      });
+    });
+
     return () => {
       socket?.off("newMessage");
       socket?.off("messagesSeen");
@@ -413,6 +426,7 @@ export function useChatState() {
       socket?.off("messageDeleted");
       socket?.off("messageEdited");
       socket?.off("chatDeleted");
+      socket?.off("userStatusChanged");
     };
   }, [socket, selectedUser, setChats, loggedInUser?._id]);
 
