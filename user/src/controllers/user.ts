@@ -97,11 +97,15 @@ export const updateName = TryCatch(async (req: AuthenticatedRequest, res) => {
   }
 
   if (req.body) {
-    if (req.body.name) user.name = req.body.name;
+    if (req.body.name && req.body.name.trim() !== "") user.name = req.body.name;
     if (req.body.about !== undefined) user.about = req.body.about;
     if (req.body.showLastSeen !== undefined) {
       user.showLastSeen = req.body.showLastSeen === "true" || req.body.showLastSeen === true;
     }
+  }
+
+  if (!user.name || user.name.trim() === "") {
+    user.name = "User";
   }
 
   if (req.file) {
