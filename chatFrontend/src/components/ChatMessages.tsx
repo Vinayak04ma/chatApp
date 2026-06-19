@@ -2,7 +2,17 @@ import { Message } from "@/app/chat/page";
 import { User, useAppData } from "@/context/AppContext";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import moment from "moment";
-import { Check, CheckCheck, Clock, Pencil, Trash2, X, MessageCircle } from "lucide-react";
+import { Check, CheckCheck, Clock, Pencil, Trash2, X, MessageCircle, Phone, Video } from "lucide-react";
+
+const formatCallDuration = (seconds: number) => {
+  if (!seconds || seconds <= 0) return "";
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  if (mins > 0) {
+    return `${mins}m ${secs}s`;
+  }
+  return `${secs}s`;
+};
 
 interface ChatMessagesProps {
   selectedUser: string | null;
@@ -134,11 +144,52 @@ const ChatMessages = ({
                           </div>
                         )}
 
-                        {e.text && (
+                        {e.text && e.messageType !== "call" && (
                           <p className="text-sm whitespace-pre-wrap break-words leading-relaxed select-text mt-0.5">
                             {e.text}
                           </p>
                         )}
+
+                        {e.messageType === "call" && (() => {
+                          let callData = { callType: "voice", status: "missed", duration: 0 };
+                          try {
+                            if (e.text) callData = JSON.parse(e.text);
+                          } catch (err) {}
+
+                          const isVoice = callData.callType === "voice";
+                          const isMissed = callData.status === "missed";
+                          const isDeclined = callData.status === "declined";
+                          
+                          return (
+                            <div className="flex items-center gap-3 py-1 pr-4 min-w-[200px]">
+                              <div className={`p-2.5 rounded-full ${
+                                isMissed 
+                                  ? "bg-red-500/10 text-red-400" 
+                                  : isDeclined 
+                                  ? "bg-gray-500/10 text-gray-400" 
+                                  : "bg-green-500/10 text-green-400"
+                              }`}>
+                                {isVoice ? <Phone className="w-5 h-5" /> : <Video className="w-5 h-5" />}
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-sm font-semibold text-gray-200">
+                                  {isMissed 
+                                    ? "Missed Call" 
+                                    : isDeclined 
+                                    ? "Declined Call" 
+                                    : isSentByMe 
+                                    ? "Outgoing Call" 
+                                    : "Incoming Call"}
+                                </span>
+                                <span className="text-xs text-gray-400 mt-0.5">
+                                  {callData.duration && callData.duration > 0 
+                                    ? formatCallDuration(callData.duration) 
+                                    : isVoice ? "Voice" : "Video"}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })()}
 
                         {/* Floating bottom metadata */}
                         <div className={`absolute bottom-1 right-2 flex items-center gap-1 text-[10px] select-none ${

@@ -10,6 +10,8 @@ import {
   deleteChat,
   createGroupChat,
   getChatDetails,
+  logCall,
+  getCallHistory,
 } from "../controllers/chat.js";
 import { upload } from "../middlewares/multer.js";
 
@@ -32,5 +34,7 @@ router.post(
 router.get("/message/:chatId", isAuth, getMessagesByChat);
 router.delete("/message/:messageId", isAuth, deleteMessage);
 router.put("/message/:messageId", isAuth, editMessage);
+router.post("/call/log", isAuth, logCall);
+router.get("/call/history", isAuth, getCallHistory);
 
 export default router;

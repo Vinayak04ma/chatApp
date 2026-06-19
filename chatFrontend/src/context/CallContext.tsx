@@ -1,8 +1,66 @@
 "use client";
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { SocketData } from "./SocketContext";
-import { useAppData } from "./AppContext";
+import { useAppData, chat_service } from "./AppContext";
 import { Phone, PhoneOff, Video, VideoOff, Mic, MicOff } from "lucide-react";
+import Cookies from "js-cookie";
+import axios from "axios";
+
+class RingtonePlayer {
+  private audioCtx: AudioContext | null = null;
+  private intervalId: any = null;
+
+  start() {
+    if (this.intervalId) return;
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      this.audioCtx = new AudioContextClass();
+      
+      const playTone = () => {
+        if (!this.audioCtx) return;
+        const osc1 = this.audioCtx.createOscillator();
+        const osc2 = this.audioCtx.createOscillator();
+        const gainNode = this.audioCtx.createGain();
+        
+        osc1.frequency.value = 440;
+        osc2.frequency.value = 480;
+        
+        gainNode.gain.setValueAtTime(0, this.audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.08, this.audioCtx.currentTime + 0.05);
+        gainNode.gain.setValueAtTime(0.08, this.audioCtx.currentTime + 1.95);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + 2.0);
+        
+        osc1.connect(gainNode);
+        osc2.connect(gainNode);
+        gainNode.connect(this.audioCtx.destination);
+        
+        osc1.start();
+        osc2.start();
+        osc1.stop(this.audioCtx.currentTime + 2.0);
+        osc2.stop(this.audioCtx.currentTime + 2.0);
+      };
+      
+      playTone();
+      this.intervalId = setInterval(playTone, 4000);
+    } catch (e) {
+      console.error("Failed to start ringtone audio:", e);
+    }
+  }
+
+  stop() {
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
+    if (this.audioCtx) {
+      try {
+        this.audioCtx.close();
+      } catch (e) {}
+      this.audioCtx = null;
+    }
+  }
+}
 
 interface CallContextType {
   callUser: (targetId: string, type: "voice" | "video") => void;
@@ -19,7 +77,7 @@ const CallContext = createContext<CallContextType | null>(null);
 
 export const CallProvider = ({ children }: { children: React.ReactNode }) => {
   const { socket } = SocketData();
-  const { user: loggedInUser, users } = useAppData();
+  const { user: loggedInUser, users, chats, fetchChats } = useAppData();
 
   const [callType, setCallType] = useState<"voice" | "video" | null>(null);
   const [incomingCall, setIncomingCall] = useState(false);
@@ -35,13 +93,29 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
   const [isVideoOff, setIsVideoOff] = useState(false);
 
   const peerRef = useRef<RTCPeerConnection | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const ringtonePlayerRef = useRef<RingtonePlayer | null>(null);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const iceCandidatesQueue = useRef<RTCIceCandidateInit[]>([]);
 
+  // Ref trackers for call logging
+  const callStartTimeRef = useRef<number | null>(null);
+  const callWasConnectedRef = useRef<boolean>(false);
+
   const callUserDetail = users?.find(
     (u) => u._id === (incomingCall ? callerId : calleeId)
   ) || { name: "Unknown User" };
+
+  // Initialize Ringtone Player
+  useEffect(() => {
+    ringtonePlayerRef.current = new RingtonePlayer();
+    return () => {
+      if (ringtonePlayerRef.current) {
+        ringtonePlayerRef.current.stop();
+      }
+    };
+  }, []);
 
   // Listen to Socket events
   useEffect(() => {
@@ -52,6 +126,9 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
       setIncomingSignal(data.signal);
       setCallType(data.type);
       setIncomingCall(true);
+      if (ringtonePlayerRef.current) {
+        ringtonePlayerRef.current.start();
+      }
     });
 
     socket.on("endCall", () => {
@@ -63,6 +140,35 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
       socket.off("endCall");
     };
   }, [socket]);
+
+  // Handle tab closing/reload and socket disconnection
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const targetId = incomingCall ? callerId : calleeId;
+      if (socket && targetId) {
+        socket.emit("endCall", { to: targetId });
+      }
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+
+    const handleSocketDisconnect = () => {
+      cleanupCall();
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    if (socket) {
+      socket.on("disconnect", handleSocketDisconnect);
+    }
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      if (socket) {
+        socket.off("disconnect", handleSocketDisconnect);
+      }
+    };
+  }, [socket, incomingCall, callerId, calleeId]);
 
   // Handle incoming ice candidates
   useEffect(() => {
@@ -82,15 +188,59 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, [socket]);
 
+  const logCallToDatabase = async (targetId: string, status: "completed" | "declined" | "missed", durationSeconds: number) => {
+    const chatObj = chats?.find((c) => c.user._id === targetId);
+    if (!chatObj) return;
+
+    const token = Cookies.get("token");
+    if (!token) return;
+
+    try {
+      await axios.post(
+        `${chat_service}/api/v1/call/log`,
+        {
+          chatId: chatObj.chat._id,
+          callType: callType || "voice",
+          status,
+          duration: durationSeconds,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (fetchChats) fetchChats();
+    } catch (err) {
+      console.error("Failed to log call:", err);
+    }
+  };
+
   const cleanupCall = () => {
+    // Log call if we are the caller (initiator)
+    const isCaller = calleeId !== null;
+    const targetId = isCaller ? calleeId : callerId;
+    const callWasConnected = callWasConnectedRef.current;
+    const startTime = callStartTimeRef.current;
+
+    if (isCaller && targetId) {
+      const duration = callWasConnected && startTime ? Math.round((Date.now() - startTime) / 1000) : 0;
+      const status = callWasConnected ? "completed" : "missed";
+      logCallToDatabase(targetId, status, duration);
+    }
+
+    if (ringtonePlayerRef.current) {
+      ringtonePlayerRef.current.stop();
+    }
     if (peerRef.current) {
       peerRef.current.close();
       peerRef.current = null;
     }
-    if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop());
-      setLocalStream(null);
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => track.stop());
+      localStreamRef.current = null;
     }
+    setLocalStream(null);
     setRemoteStream(null);
     setIncomingCall(false);
     setActiveCall(false);
@@ -101,6 +251,8 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
     setIsMuted(false);
     setIsVideoOff(false);
     iceCandidatesQueue.current = [];
+    callStartTimeRef.current = null;
+    callWasConnectedRef.current = false;
   };
 
   const createPeerConnection = (targetId: string, stream: MediaStream) => {
@@ -118,6 +270,8 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
     pc.ontrack = (event) => {
       if (event.streams && event.streams[0]) {
         setRemoteStream(event.streams[0]);
+        callWasConnectedRef.current = true;
+        callStartTimeRef.current = Date.now();
       }
     };
 
@@ -139,6 +293,8 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
     setCalleeId(targetId);
     setCallType(type);
     setActiveCall(true);
+    callWasConnectedRef.current = false;
+    callStartTimeRef.current = null;
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -146,6 +302,7 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
         video: type === "video",
       });
       setLocalStream(stream);
+      localStreamRef.current = stream;
 
       const pc = createPeerConnection(targetId, stream);
 
@@ -181,6 +338,12 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
     if (!socket || !callerId || !incomingSignal) return;
     setIncomingCall(false);
     setActiveCall(true);
+    callWasConnectedRef.current = false;
+    callStartTimeRef.current = null;
+
+    if (ringtonePlayerRef.current) {
+      ringtonePlayerRef.current.stop();
+    }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -188,6 +351,7 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
         video: callType === "video",
       });
       setLocalStream(stream);
+      localStreamRef.current = stream;
 
       const pc = createPeerConnection(callerId, stream);
 
@@ -214,6 +378,9 @@ export const CallProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const declineCall = () => {
+    if (ringtonePlayerRef.current) {
+      ringtonePlayerRef.current.stop();
+    }
     if (socket && callerId) {
       socket.emit("endCall", { to: callerId });
     }

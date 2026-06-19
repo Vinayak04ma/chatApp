@@ -19,7 +19,7 @@ export interface Message {
     url: string;
     publicId: string;
   };
-  messageType: "text" | "image" | "audio";
+  messageType: "text" | "image" | "audio" | "call";
   seen: boolean;
   seenAt?: string;
   createdAt: string;

@@ -1,4 +1,5 @@
 import { User, useAppData, user_service, chat_service } from "@/context/AppContext";
+import { CallData } from "@/context/CallContext";
 import {
   CornerDownRight,
   CornerUpLeft,
@@ -16,11 +17,25 @@ import {
   Pencil,
   Plus,
   Sparkles,
+  Phone,
+  PhoneOff,
+  Video,
 } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import Cookies from "js-cookie";
 import axios from "axios";
 import toast from "react-hot-toast";
+import moment from "moment";
+
+const formatCallDuration = (seconds: number) => {
+  if (!seconds || seconds <= 0) return "";
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  if (mins > 0) {
+    return `${mins}m ${secs}s`;
+  }
+  return `${secs}s`;
+};
 
 interface ChatSidebarProps {
   sidebarOpen: boolean;
@@ -52,9 +67,37 @@ const ChatSidebar = ({
   onlineUsers,
 }: ChatSidebarProps) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<'chats' | 'new-chat' | 'profile'>('chats');
+  const [activeTab, setActiveTab] = useState<'chats' | 'new-chat' | 'profile' | 'calls'>('chats');
   
   const { setUser, fetchChats } = useAppData();
+  const { callUser } = CallData();
+
+  const [callHistory, setCallHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const fetchCallHistory = async () => {
+    const token = Cookies.get("token");
+    if (!token) return;
+    setLoadingHistory(true);
+    try {
+      const { data } = await axios.get(`${chat_service}/api/v1/call/history`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setCallHistory(data.history || []);
+    } catch (err) {
+      console.error("Failed to fetch call history:", err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'calls') {
+      fetchCallHistory();
+    }
+  }, [activeTab, chats]);
   const [isEditName, setIsEditName] = useState(false);
   const [nameVal, setNameVal] = useState("");
   const [isEditAbout, setIsEditAbout] = useState(false);
@@ -218,7 +261,7 @@ const ChatSidebar = ({
     }
   }, [loggedInUser]);
 
-  const handleTabChange = (tab: 'chats' | 'new-chat' | 'profile') => {
+  const handleTabChange = (tab: 'chats' | 'new-chat' | 'profile' | 'calls') => {
     setActiveTab(tab);
     if (tab === 'new-chat') {
       setShowAllUsers(true);
@@ -369,6 +412,18 @@ const ChatSidebar = ({
               title="Chats"
             >
               <MessageSquare className="w-5.5 h-5.5" />
+            </button>
+
+            <button
+              onClick={() => handleTabChange('calls')}
+              className={`p-2.5 rounded-xl transition-all ${
+                activeTab === 'calls'
+                  ? "bg-[#2a3942] text-green-400"
+                  : "text-gray-400 hover:text-gray-200 hover:bg-[#2a3942]/50"
+              }`}
+              title="Calls Log"
+            >
+              <Phone className="w-5.5 h-5.5" />
             </button>
 
             <button
@@ -635,6 +690,109 @@ const ChatSidebar = ({
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+        ) : activeTab === 'calls' ? (
+          /* Calls History Panel */
+          <div className="flex-1 flex flex-col h-full bg-[#111b21]">
+            {/* Header */}
+            <div className="px-5 py-4 bg-[#202c33] border-b border-[#2a3942] flex items-center gap-4 flex-shrink-0">
+              <button
+                onClick={() => handleTabChange('chats')}
+                className="p-1.5 hover:bg-[#2a3942] rounded-full text-gray-400 hover:text-white transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <h2 className="text-base font-bold text-white tracking-wide">Call Log</h2>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto custom-scroll pb-10">
+              {loadingHistory ? (
+                <div className="flex items-center justify-center h-48">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+                </div>
+              ) : callHistory.length > 0 ? (
+                <div className="divide-y divide-[#222e35]/30">
+                  {callHistory.map((item) => {
+                    let callData = { callType: "voice", status: "missed", duration: 0 };
+                    try {
+                      if (item.text) callData = JSON.parse(item.text);
+                    } catch (err) {}
+
+                    const isVoice = callData.callType === "voice";
+                    const isMissed = callData.status === "missed";
+                    const isDeclined = callData.status === "declined";
+                    const isSentByMe = item.sender === loggedInUser?._id;
+
+                    return (
+                      <div key={item._id} className="flex items-center justify-between p-4 hover:bg-[#202c33]/40 transition-colors">
+                        <div className="flex items-center gap-3 min-w-0">
+                          {/* Avatar */}
+                          <div className="w-10 h-10 rounded-full bg-gray-700 overflow-hidden flex-shrink-0 flex items-center justify-center border border-gray-650">
+                            {item.user?.profilePic?.url ? (
+                              <img src={item.user.profilePic.url} alt={item.user.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <UserCircle className="w-6 h-6 text-gray-400" />
+                            )}
+                          </div>
+
+                          {/* Info */}
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-semibold text-gray-200 truncate">{item.user?.name || "Unknown User"}</h4>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              {isMissed || isDeclined ? (
+                                <PhoneOff className="w-3 h-3 text-red-500" />
+                              ) : isSentByMe ? (
+                                <CornerUpLeft className="w-3 h-3 text-blue-400" />
+                              ) : (
+                                <CornerDownRight className="w-3 h-3 text-green-400" />
+                              )}
+                              <span className="text-[11px] text-gray-400">
+                                {isMissed 
+                                  ? "Missed" 
+                                  : isDeclined 
+                                  ? "Declined" 
+                                  : isSentByMe 
+                                  ? "Outgoing" 
+                                  : "Incoming"}
+                                {callData.duration > 0 && ` (${formatCallDuration(callData.duration)})`}
+                                &nbsp;•&nbsp;
+                                {moment(item.createdAt).format("MMM D, h:mm A")}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Callback button */}
+                        <button
+                          onClick={() => {
+                            const chatObj = chats?.find((c) => c.user._id === item.user?._id);
+                            if (chatObj) {
+                              setSelectedUser(chatObj.chat._id);
+                            }
+                            if (item.user?._id) {
+                              callUser(item.user._id, callData.callType as "video" | "voice");
+                            }
+                          }}
+                          className="p-2 bg-[#202c33] hover:bg-[#2a3942] text-green-400 rounded-full transition-colors"
+                          title={`Call back (${callData.callType})`}
+                        >
+                          {isVoice ? <Phone className="w-4 h-4" /> : <Video className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-center p-4 mt-16">
+                  <div className="p-3 bg-[#202c33] rounded-full mb-3">
+                    <Phone className="w-6 h-6 text-gray-400" />
+                  </div>
+                  <p className="text-gray-400 font-medium text-sm">No call logs</p>
+                  <p className="text-xs text-gray-500 mt-1">Calls you make and receive will show up here</p>
+                </div>
+              )}
             </div>
           </div>
         ) : (

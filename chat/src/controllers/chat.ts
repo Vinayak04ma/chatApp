@@ -954,3 +954,108 @@ export const getChatDetails = TryCatch(
     });
   }
 );
+
+export const logCall = TryCatch(async (req: AuthenticatedRequest, res) => {
+  const userId = req.user?._id;
+  const { chatId, callType, status, duration } = req.body;
+
+  if (!userId) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+
+  if (!chatId || !callType || !status) {
+    res.status(400).json({ message: "chatId, callType, and status are required" });
+    return;
+  }
+
+  const chat = await Chat.findById(chatId);
+  if (!chat) {
+    res.status(404).json({ message: "Chat not found" });
+    return;
+  }
+
+  const textPayload = JSON.stringify({
+    callType, // "voice" | "video"
+    status, // "missed" | "completed" | "declined"
+    duration: duration || 0,
+  });
+
+  const callMessage = await Messages.create({
+    chatId,
+    sender: userId,
+    text: textPayload,
+    messageType: "call",
+    seen: false,
+  });
+
+  chat.latestMessage = {
+    text: status === "missed" ? `Missed ${callType} call` : `${callType === "video" ? "Video" : "Voice"} call`,
+    sender: userId,
+  } as any;
+
+  await chat.save();
+
+  // Notify other users in the chat via socket
+  chat.users.forEach((uId) => {
+    if (uId.toString() !== userId.toString()) {
+      const socketId = getRecieverSocketId(uId.toString());
+      if (socketId) {
+        io.to(socketId).emit("newMessage", callMessage);
+      }
+    }
+  });
+
+  res.status(201).json({
+    message: "Call logged successfully",
+    callMessage,
+  });
+});
+
+export const getCallHistory = TryCatch(async (req: AuthenticatedRequest, res) => {
+  const userId = req.user?._id;
+
+  if (!userId) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+
+  // Find all chats user is part of
+  const chats = await Chat.find({ users: userId });
+  const chatIds = chats.map((c) => c._id);
+
+  // Find all call messages in those chats
+  const callMessages = await Messages.find({
+    chatId: { $in: chatIds },
+    messageType: "call",
+  }).sort({ createdAt: -1 });
+
+  // Map call messages to include populated other-user info and chat details
+  const populatedHistory = await Promise.all(
+    callMessages.map(async (msg) => {
+      const parentChat = chats.find((c: any) => c._id.toString() === msg.chatId.toString());
+      const otherUserId = parentChat?.users.find((id: any) => id.toString() !== userId.toString());
+      
+      let otherUser = { _id: otherUserId, name: "Unknown User" };
+      if (otherUserId) {
+        try {
+          otherUser = await fetchUserWithCache(otherUserId.toString());
+        } catch (err) {}
+      }
+
+      return {
+        _id: msg._id,
+        chatId: msg.chatId,
+        sender: msg.sender,
+        text: msg.text,
+        messageType: msg.messageType,
+        createdAt: msg.createdAt,
+        user: otherUser,
+      };
+    })
+  );
+
+  res.json({
+    history: populatedHistory,
+  });
+});
