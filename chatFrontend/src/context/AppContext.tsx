@@ -21,6 +21,7 @@ export interface User {
   name: string;
   email: string;
   about?: string;
+  username?: string;
   profilePic?: {
     url: string;
     publicId: string;

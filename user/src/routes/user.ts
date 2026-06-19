@@ -7,6 +7,8 @@ import {
   updateName,
   verifyUser,
   updateLastSeenInternal,
+  requestDeleteOtp,
+  confirmDeleteAccount,
 } from "../controllers/user.js";
 import { isAuth } from "../middleware/isAuth.js";
 import { upload } from "../middleware/multer.js";
@@ -20,6 +22,8 @@ router.get("/user/all", isAuth, getAllUsers);
 router.get("/user/:id", getAUser);
 router.post("/update/user", isAuth, upload.single("file"), updateName);
 router.put("/user/internal/:id/lastseen", updateLastSeenInternal);
+router.post("/account/delete/request", isAuth, requestDeleteOtp);
+router.post("/account/delete/confirm", isAuth, confirmDeleteAccount);
 
 export default router;
 

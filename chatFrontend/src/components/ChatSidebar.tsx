@@ -61,6 +61,61 @@ const ChatSidebar = ({
   const [showLastSeen, setShowLastSeen] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
 
+  // Account Delete states
+  const [deleteState, setDeleteState] = useState<'none' | 'requesting' | 'verifying'>('none');
+  const [deleteOtp, setDeleteOtp] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const requestDeleteOtp = async () => {
+    const token = Cookies.get("token");
+    setIsDeleting(true);
+    const toastId = toast.loading("Sending deletion OTP...");
+    try {
+      const { data } = await axios.post(
+        `${user_service}/api/v1/account/delete/request`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      toast.success(data.message, { id: toastId });
+      setDeleteState('verifying');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to send OTP", { id: toastId });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const confirmDeleteAccount = async () => {
+    if (!deleteOtp.trim()) {
+      toast.error("Please enter the OTP");
+      return;
+    }
+    const token = Cookies.get("token");
+    setIsDeleting(true);
+    const toastId = toast.loading("Deleting account permanently...");
+    try {
+      const { data } = await axios.post(
+        `${user_service}/api/v1/account/delete/confirm`,
+        { otp: deleteOtp.trim() },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      toast.success(data.message, { id: toastId });
+      handleLogout();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to delete account", { id: toastId });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // Sync tab with parent showAllUsers
   useEffect(() => {
     if (showAllUsers) {
@@ -375,6 +430,15 @@ const ChatSidebar = ({
                 )}
               </div>
 
+              {/* Username Section */}
+              <div className="space-y-2 pt-2 border-t border-[#222e35]/30">
+                <label className="text-[11px] font-semibold text-green-400 uppercase tracking-wider">Username</label>
+                <div className="flex items-center justify-between bg-[#202c33]/40 p-3 rounded-lg border border-gray-800/40">
+                  <span className="text-sm text-gray-200">@{loggedInUser?.username || "not_set"}</span>
+                  <span className="text-[10px] text-gray-500 font-semibold italic">Unique Handle</span>
+                </div>
+              </div>
+
               {/* Privacy Setting Toggle */}
               <div className="space-y-3 pt-4 border-t border-[#222e35]">
                 <div className="flex items-center justify-between">
@@ -397,6 +461,73 @@ const ChatSidebar = ({
                     />
                   </button>
                 </div>
+              </div>
+
+              {/* Account Deletion Section */}
+              <div className="space-y-3 pt-4 border-t border-[#222e35]">
+                <label className="text-[11px] font-semibold text-red-400 uppercase tracking-wider">Danger Zone</label>
+                
+                {deleteState === 'none' && (
+                  <button
+                    onClick={() => setDeleteState('requesting')}
+                    className="w-full bg-red-950/20 hover:bg-red-900/30 border border-red-500/25 text-red-400 font-semibold text-xs py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    Delete Account
+                  </button>
+                )}
+
+                {deleteState === 'requesting' && (
+                  <div className="bg-red-950/10 border border-red-500/20 rounded-lg p-3.5 space-y-3">
+                    <p className="text-[10px] text-gray-400 leading-relaxed">
+                      Deleting your account will permanently erase your profile, chats, and messages. An OTP will be sent to confirm.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={requestDeleteOtp}
+                        disabled={isDeleting}
+                        className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-semibold text-xs py-2 rounded-lg transition-colors text-center"
+                      >
+                        Send OTP
+                      </button>
+                      <button
+                        onClick={() => setDeleteState('none')}
+                        className="flex-1 bg-transparent hover:bg-gray-800 border border-gray-700 text-gray-300 font-semibold text-xs py-2 rounded-lg transition-colors text-center"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {deleteState === 'verifying' && (
+                  <div className="bg-red-950/10 border border-red-500/20 rounded-lg p-3.5 space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-semibold text-gray-300">Enter Deletion OTP</label>
+                      <input
+                        type="text"
+                        placeholder="6-digit OTP"
+                        value={deleteOtp}
+                        onChange={(e) => setDeleteOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        className="w-full bg-[#202c33] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-red-500/40"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={confirmDeleteAccount}
+                        disabled={isDeleting}
+                        className="flex-1 bg-red-650 hover:bg-red-700 disabled:opacity-50 text-white font-semibold text-xs py-2 rounded-lg transition-colors text-center"
+                      >
+                        Verify & Delete
+                      </button>
+                      <button
+                        onClick={() => { setDeleteState('none'); setDeleteOtp(''); }}
+                        className="flex-1 bg-transparent hover:bg-gray-800 border border-gray-700 text-gray-300 font-semibold text-xs py-2 rounded-lg transition-colors text-center"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -462,9 +593,9 @@ const ChatSidebar = ({
                       ?.filter(
                         (u) =>
                           u._id !== loggedInUser?._id &&
-                          u.name
-                            .toLowerCase()
-                            .includes(searchQuery.toLowerCase())
+                          (u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            (u.username &&
+                              u.username.toLowerCase().includes(searchQuery.toLowerCase())))
                       )
                       .map((u) => (
                         <button
@@ -472,7 +603,7 @@ const ChatSidebar = ({
                           className="w-full text-left p-3.5 rounded-lg hover:bg-[#202c33]/50 transition-colors border-b border-[#222e35]/35 flex items-center justify-between"
                           onClick={() => createChat(u)}
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 w-full">
                             <div className="relative flex-shrink-0">
                               <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden border border-gray-650">
                                 {u.profilePic?.url ? (
@@ -491,7 +622,14 @@ const ChatSidebar = ({
                             </div>
 
                             <div className="flex-1 min-w-0">
-                              <span className="font-semibold text-sm text-gray-200">{u.name}</span>
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-semibold text-sm text-gray-200 truncate">{u.name}</span>
+                                {u.username && (
+                                  <span className="text-[10px] text-green-400 font-semibold bg-green-950/20 px-1.5 py-0.5 rounded flex-shrink-0">
+                                    @{u.username}
+                                  </span>
+                                )}
+                              </div>
                               <div className="text-xs text-gray-400 mt-0.5">
                                 {onlineUsers.includes(u._id) ? "Online" : "Offline"}
                               </div>

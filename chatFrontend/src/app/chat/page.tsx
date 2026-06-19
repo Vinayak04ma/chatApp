@@ -5,6 +5,7 @@ import Loading from "@/components/Loading";
 import ChatHeader from "@/components/ChatHeader";
 import ChatMessages from "@/components/ChatMessages";
 import MessageInput from "@/components/MessageInput";
+import OnboardingSetup from "@/components/OnboardingSetup";
 import { useChatState } from "@/hooks/useChatState";
 import { X, UserCircle, Phone, Video } from "lucide-react";
 import { CallData } from "@/context/CallContext";
@@ -48,6 +49,11 @@ const ChatApp = () => {
   }, [messages]);
 
   if (loading) return <Loading />;
+
+  if (loggedInUser && !loggedInUser.username) {
+    return <OnboardingSetup loggedInUser={loggedInUser} />;
+  }
+
   return (
     <div className="h-screen flex bg-[#0b141a] text-white relative overflow-hidden">
       <ChatSidebar
